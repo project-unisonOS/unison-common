@@ -14,11 +14,17 @@ authors = [
 ]
 
 dependencies = [
-    "fastapi>=0.104.0",
-    "httpx>=0.25.0",
+    "fastapi>=0.115.0",
+    "httpx>=0.27.2",
     "python-jose[cryptography]>=3.3.0",
     "bleach>=6.0.0",
     "redis>=5.0.0"
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.3.3",
+    "pytest-asyncio>=0.24.0"
 ]
 
 [tool.setuptools]

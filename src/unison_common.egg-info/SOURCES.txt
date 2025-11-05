@@ -1,9 +1,14 @@
 README.md
 pyproject.toml
 src/unison_common/__init__.py
+src/unison_common/auth.py
 src/unison_common/envelope.py
+src/unison_common/http_client.py
+src/unison_common/logging.py
 src/unison_common.egg-info/PKG-INFO
 src/unison_common.egg-info/SOURCES.txt
 src/unison_common.egg-info/dependency_links.txt
+src/unison_common.egg-info/requires.txt
 src/unison_common.egg-info/top_level.txt
 tests/test_envelope.py
+tests/test_envelope_validation.py

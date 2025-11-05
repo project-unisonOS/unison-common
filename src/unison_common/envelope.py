@@ -17,10 +17,10 @@ MAX_STRING_LENGTH = 10000
 MAX_NESTED_DEPTH = 10
 
 # Validation patterns
-INTENT_PATTERN = re.compile(r'^[a-z0-9\._-]+$')
+INTENT_PATTERN = re.compile(r'^[a-zA-Z0-9\._-]+$')
 SOURCE_PATTERN = re.compile(r'^[a-zA-Z0-9\._-]+$')
 TIMESTAMP_PATTERN = re.compile(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?$')
-AUTH_SCOPE_PATTERN = re.compile(r'^[a-z0-9:_-]+$')
+AUTH_SCOPE_PATTERN = re.compile(r'^[a-zA-Z0-9:._-]+$')
 
 # Dangerous patterns to block
 DANGEROUS_PATTERNS = [
@@ -36,7 +36,7 @@ def sanitize_string(value: str) -> str:
         return value
     
     # Remove potentially dangerous HTML/JS
-    cleaned = bleach.clean(value, tags=[], strip=True, attributes=[], styles=[])
+    cleaned = bleach.clean(value, tags=[], strip=True, attributes=[])
     
     # Check for dangerous patterns
     for pattern in DANGEROUS_PATTERNS:
@@ -211,7 +211,7 @@ def validate_safety_context(safety_context: Any) -> Dict[str, Any]:
     sanitized_context = sanitize_dict(safety_context)
     
     # Only allow known safety fields
-    for field in sanitized_context.keys():
+    for field in list(sanitized_context.keys()):
         if field not in allowed_safety_fields:
             logger.warning(f"Unknown safety_context field '{field}' removed")
             del sanitized_context[field]
@@ -284,7 +284,7 @@ def validate_event_envelope(envelope: Dict[str, Any]) -> Dict[str, Any]:
     allowed_fields = set(REQUIRED_FIELDS + ["auth_scope", "safety_context"])
     unknown_fields = set(envelope.keys()) - allowed_fields
     if unknown_fields:
-        logger.warning(f"Unknown top-level fields removed: {unknown_fields}")
+        raise EnvelopeValidationError(f"Unknown top-level fields not allowed: {unknown_fields}")
     
     # Log validation for security monitoring
     logger.info(f"Envelope validated successfully", extra={
