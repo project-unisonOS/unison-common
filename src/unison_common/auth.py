@@ -14,6 +14,9 @@ SECRET_KEY = os.getenv("UNISON_JWT_SECRET", "your-secret-key")
 ALGORITHM = "HS256"
 AUTH_SERVICE_URL = os.getenv("UNISON_AUTH_SERVICE_URL", "http://auth:8088")
 SERVICE_SECRET = os.getenv("UNISON_SERVICE_SECRET", "default-service-secret")
+CONSENT_SERVICE_URL = os.getenv("UNISON_CONSENT_SERVICE_URL", "http://consent:7072")
+CONSENT_SECRET = os.getenv("UNISON_CONSENT_SECRET", "consent-secret-key")
+CONSENT_AUDIENCE = os.getenv("UNISON_CONSENT_AUDIENCE", "orchestrator")
 
 security = HTTPBearer(auto_error=False)
 
@@ -377,3 +380,124 @@ def create_auth_middleware(
         return add_security_headers(response)
     
     return auth_middleware
+
+
+# Consent Grant Verification Functions
+
+def verify_consent_grant_locally(grant_token: str) -> Dict[str, Any]:
+    """Verify a consent grant JWT locally without network calls"""
+    try:
+        payload = jwt.decode(
+            grant_token,
+            CONSENT_SECRET,
+            algorithms=[ALGORITHM],
+            audience=CONSENT_AUDIENCE,
+            issuer="unison-consent"
+        )
+        
+        # Validate required claims
+        required_claims = ["sub", "aud", "iss", "iat", "exp", "jti", "scopes", "purpose", "type"]
+        for claim in required_claims:
+            if claim not in payload:
+                raise JWTError(f"Missing required claim: {claim}")
+        
+        # Validate grant type
+        if payload.get("type") != "consent_grant":
+            raise JWTError("Invalid token type: expected consent_grant")
+        
+        # Check expiration
+        if time.time() > payload.get("exp", 0):
+            raise JWTError("Grant has expired")
+        
+        return payload
+        
+    except JWTError as e:
+        logger.error(f"Consent grant verification failed: {e}")
+        raise AuthError(f"Invalid consent grant: {str(e)}")
+
+async def verify_consent_grant_with_service(grant_token: str) -> Optional[Dict[str, Any]]:
+    """Verify a consent grant with the consent service (fallback)"""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.post(
+                f"{CONSENT_SERVICE_URL}/introspect",
+                json={"token": grant_token}
+            )
+            
+        if response.status_code == 200:
+            result = response.json()
+            if result.get("active"):
+                return result
+        return None
+        
+    except httpx.RequestError as e:
+        logger.error(f"Consent service unavailable: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error during grant verification: {e}")
+        return None
+
+async def verify_consent_grant(grant_token: str, use_local_first: bool = True) -> Dict[str, Any]:
+    """Verify a consent grant, trying local verification first, then service fallback"""
+    if use_local_first:
+        try:
+            # Try local verification first (fast, no network call)
+            return verify_consent_grant_locally(grant_token)
+        except AuthError:
+            # Fall back to service verification
+            logger.info("Local verification failed, trying consent service")
+            result = await verify_consent_grant_with_service(grant_token)
+            if not result:
+                raise AuthError("Consent grant verification failed")
+            return result
+    else:
+        # Only use service verification
+        result = await verify_consent_grant_with_service(grant_token)
+        if not result:
+            raise AuthError("Consent grant verification failed")
+        return result
+
+def check_grant_scope(grant_payload: Dict[str, Any], required_scope: str) -> bool:
+    """Check if a grant includes the required scope"""
+    scopes = grant_payload.get("scopes", [])
+    return required_scope in scopes
+
+def check_grant_purpose(grant_payload: Dict[str, Any], allowed_purposes: List[str]) -> bool:
+    """Check if a grant's purpose is in the allowed list"""
+    purpose = grant_payload.get("purpose", "")
+    return purpose in allowed_purposes
+
+async def require_consent_grant(
+    required_scope: str,
+    allowed_purposes: List[str] = None,
+    grant_token: str = None
+) -> Dict[str, Any]:
+    """
+    Dependency function to require a valid consent grant with specific scope
+    
+    Args:
+        required_scope: The scope required for this operation
+        allowed_purposes: List of allowed purposes (optional)
+        grant_token: The grant token (if None, will look for Authorization header)
+    
+    Returns:
+        The verified grant payload
+    
+    Raises:
+        AuthError: If grant is invalid or missing required scope
+    """
+    if not grant_token:
+        raise AuthError("No consent grant provided")
+    
+    # Verify the grant
+    grant_payload = await verify_consent_grant(grant_token)
+    
+    # Check required scope
+    if not check_grant_scope(grant_payload, required_scope):
+        raise AuthError(f"Consent grant does not include required scope: {required_scope}")
+    
+    # Check purpose if restrictions apply
+    if allowed_purposes and not check_grant_purpose(grant_payload, allowed_purposes):
+        raise AuthError(f"Consent grant purpose not allowed: {grant_payload.get('purpose')}")
+    
+    return grant_payload
