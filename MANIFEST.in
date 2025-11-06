@@ -1,0 +1,13 @@
+include README.md
+include LICENSE
+include pyproject.toml
+recursive-include src/unison_common *.py
+recursive-include src/unison_common py.typed
+recursive-include schemas *.json
+recursive-include tests *.py
+include generate_schema_docs.py
+include schema_validation_examples.py
+global-exclude *.pyc
+global-exclude __pycache__
+global-exclude .pytest_cache
+global-exclude .mypy_cache
