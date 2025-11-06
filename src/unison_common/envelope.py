@@ -10,6 +10,19 @@ class EnvelopeValidationError(ValueError):
     """Raised when an event envelope fails structural validation."""
     pass
 
+# Import schema validation if available
+try:
+    from .schema_validation import (
+        validate_envelope_schema, 
+        validate_envelope_schema_with_details,
+        is_schema_validation_available,
+        SchemaValidationError
+    )
+    SCHEMA_VALIDATION_AVAILABLE = is_schema_validation_available()
+except ImportError:
+    SCHEMA_VALIDATION_AVAILABLE = False
+    SchemaValidationError = EnvelopeValidationError
+
 # Security constants
 REQUIRED_FIELDS = ["timestamp", "source", "intent", "payload"]
 MAX_PAYLOAD_SIZE = 1024 * 1024  # 1MB
@@ -294,6 +307,90 @@ def validate_event_envelope(envelope: Dict[str, Any]) -> Dict[str, Any]:
     })
     
     return sanitized_envelope
+
+def validate_event_envelope_with_schema(envelope: Dict[str, Any], 
+                                      use_schema_validation: bool = True) -> Dict[str, Any]:
+    """
+    Validate event envelope using both programmatic and JSON Schema validation
+    
+    Args:
+        envelope: Raw event envelope
+        use_schema_validation: Whether to use JSON Schema validation (default: True)
+        
+    Returns:
+        Sanitized and validated envelope
+        
+    Raises:
+        EnvelopeValidationError: If validation fails
+        SchemaValidationError: If schema validation fails
+    """
+    # First, perform programmatic validation and sanitization
+    sanitized_envelope = validate_event_envelope(envelope)
+    
+    # Then, perform JSON Schema validation if available and requested
+    if use_schema_validation and SCHEMA_VALIDATION_AVAILABLE:
+        try:
+            validate_envelope_schema(sanitized_envelope)
+            logger.debug("Envelope passed both programmatic and schema validation")
+        except SchemaValidationError as e:
+            logger.warning(f"Schema validation failed: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected schema validation error: {e}")
+            raise EnvelopeValidationError(f"Schema validation failed: {e}")
+    elif use_schema_validation and not SCHEMA_VALIDATION_AVAILABLE:
+        logger.warning("JSON Schema validation requested but not available - using programmatic validation only")
+    
+    return sanitized_envelope
+
+def validate_event_envelope_with_details(envelope: Dict[str, Any], 
+                                       use_schema_validation: bool = True) -> Dict[str, Any]:
+    """
+    Validate event envelope and return detailed validation results
+    
+    Args:
+        envelope: Raw event envelope
+        use_schema_validation: Whether to use JSON Schema validation (default: True)
+        
+    Returns:
+        Dictionary with validation results including errors if any
+    """
+    results = {
+        "valid": False,
+        "programmatic_errors": [],
+        "schema_errors": [],
+        "sanitized_envelope": None
+    }
+    
+    # Programmatic validation
+    try:
+        sanitized_envelope = validate_event_envelope(envelope)
+        results["sanitized_envelope"] = sanitized_envelope
+    except EnvelopeValidationError as e:
+        results["programmatic_errors"].append(str(e))
+        logger.warning(f"Programmatic validation failed: {e}")
+        return results
+    
+    # Schema validation
+    if use_schema_validation and SCHEMA_VALIDATION_AVAILABLE:
+        try:
+            schema_results = validate_envelope_schema_with_details(sanitized_envelope)
+            results["schema_errors"] = schema_results["errors"]
+        except Exception as e:
+            results["schema_errors"].append(f"Schema validation error: {e}")
+            logger.warning(f"Schema validation failed: {e}")
+    elif use_schema_validation and not SCHEMA_VALIDATION_AVAILABLE:
+        logger.warning("JSON Schema validation requested but not available")
+    
+    # Final result
+    results["valid"] = len(results["programmatic_errors"]) == 0 and len(results["schema_errors"]) == 0
+    
+    if results["valid"]:
+        logger.info("Envelope passed all validation checks")
+    else:
+        logger.warning(f"Envelope validation failed with {len(results['programmatic_errors'])} programmatic errors and {len(results['schema_errors'])} schema errors")
+    
+    return results
 
 def validate_batch_envelopes(envelopes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """

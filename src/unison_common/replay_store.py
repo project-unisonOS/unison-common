@@ -205,6 +205,82 @@ class MemoryReplayStore:
         """Get all stored trace IDs"""
         return list(self._envelopes.keys())
     
+    def filter_traces(
+        self,
+        user_id: Optional[str] = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        status: Optional[str] = None,
+        intent: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0
+    ) -> Tuple[List[str], int]:
+        """
+        Filter traces by various criteria (M5.3)
+        
+        Args:
+            user_id: Filter by user ID
+            start_date: Filter by start date (inclusive)
+            end_date: Filter by end date (inclusive)
+            status: Filter by status ("success", "error")
+            intent: Filter by intent type
+            limit: Maximum number of results
+            offset: Offset for pagination
+            
+        Returns:
+            Tuple of (filtered_trace_ids, total_count)
+        """
+        filtered_traces = []
+        
+        for trace_id, envelopes in self._envelopes.items():
+            if not envelopes:
+                continue
+            
+            # Get first envelope for metadata
+            first_envelope = envelopes[0]
+            
+            # Filter by user_id
+            if user_id and first_envelope.user_id != user_id:
+                continue
+            
+            # Filter by date range
+            if start_date and first_envelope.timestamp < start_date:
+                continue
+            if end_date and first_envelope.timestamp > end_date:
+                continue
+            
+            # Filter by status (check if any envelope has error)
+            if status:
+                has_error = any(e.error_message for e in envelopes)
+                if status == "error" and not has_error:
+                    continue
+                if status == "success" and has_error:
+                    continue
+            
+            # Filter by intent (check envelope data)
+            if intent:
+                intent_match = any(
+                    e.envelope_data.get("intent") == intent 
+                    for e in envelopes
+                )
+                if not intent_match:
+                    continue
+            
+            filtered_traces.append(trace_id)
+        
+        # Sort by timestamp (most recent first)
+        filtered_traces.sort(
+            key=lambda tid: self._envelopes[tid][0].timestamp,
+            reverse=True
+        )
+        
+        total_count = len(filtered_traces)
+        
+        # Apply pagination
+        paginated_traces = filtered_traces[offset:offset + limit]
+        
+        return paginated_traces, total_count
+    
     def get_statistics(self) -> Dict[str, Any]:
         """Get replay store statistics"""
         total_envelopes = sum(len(envelopes) for envelopes in self._envelopes.values())

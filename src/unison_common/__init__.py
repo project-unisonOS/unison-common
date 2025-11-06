@@ -83,6 +83,41 @@ from .replay_endpoints import (
     store_processing_envelope,
 )
 
+from .consent import (
+    ConsentScopes,
+    verify_consent_grant,
+    require_consent,
+    check_consent_header,
+    clear_consent_cache,
+)
+
+from .performance import (
+    HTTPConnectionPool,
+    get_http_client,
+    get_sync_http_client,
+    ResponseCache,
+    get_auth_cache,
+    get_policy_cache,
+    cached,
+    RateLimiter,
+    get_user_rate_limiter,
+    get_endpoint_rate_limiter,
+    PerformanceMonitor,
+    get_performance_monitor,
+)
+
+from .monitoring import (
+    PrometheusMetrics,
+    get_prometheus_metrics,
+    HealthCheck,
+    HealthStatus,
+    initialize_health_check,
+    get_health_check,
+    log_metric,
+    log_event,
+    log_error,
+)
+
 __all__ = [
     "validate_event_envelope",
     "EnvelopeValidationError",
@@ -142,4 +177,30 @@ __all__ = [
     "get_replay_statistics",
     "get_replay_session",
     "store_processing_envelope",
+    "ConsentScopes",
+    "verify_consent_grant",
+    "require_consent",
+    "check_consent_header",
+    "clear_consent_cache",
+    "HTTPConnectionPool",
+    "get_http_client",
+    "get_sync_http_client",
+    "ResponseCache",
+    "get_auth_cache",
+    "get_policy_cache",
+    "cached",
+    "RateLimiter",
+    "get_user_rate_limiter",
+    "get_endpoint_rate_limiter",
+    "PerformanceMonitor",
+    "get_performance_monitor",
+    "PrometheusMetrics",
+    "get_prometheus_metrics",
+    "HealthCheck",
+    "HealthStatus",
+    "initialize_health_check",
+    "get_health_check",
+    "log_metric",
+    "log_event",
+    "log_error",
 ]

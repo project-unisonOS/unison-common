@@ -5,6 +5,7 @@ src/unison_common/auth.py
 src/unison_common/envelope.py
 src/unison_common/http_client.py
 src/unison_common/logging.py
+src/unison_common/tracing.py
 src/unison_common.egg-info/PKG-INFO
 src/unison_common.egg-info/SOURCES.txt
 src/unison_common.egg-info/dependency_links.txt
