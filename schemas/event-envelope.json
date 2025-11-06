@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/project-unisonOS/unison/schemas/event-envelope.json",
+  "title": "Unison Event Envelope",
+  "description": "Schema for validating Unison platform event envelopes with security constraints",
+  "type": "object",
+  "additionalProperties": false,
+  "maxProperties": 20,
+  "required": [
+    "timestamp",
+    "source", 
+    "intent",
+    "payload"
+  ],
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "description": "ISO 8601 timestamp when the event was created",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z?$",
+      "minLength": 1,
+      "maxLength": 50
+    },
+    "source": {
+      "type": "string", 
+      "description": "Identifier of the event source service or component",
+      "pattern": "^[a-zA-Z0-9\\._-]+$",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "intent": {
+      "type": "string",
+      "description": "Intent identifier describing the event purpose",
+      "pattern": "^[a-zA-Z0-9\\._-]+$",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "payload": {
+      "type": "object",
+      "description": "Event payload data with security constraints",
+      "additionalProperties": true,
+      "maxProperties": 50,
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[\\w\\s\\-\\.,:;@#$%^&*()+=\\[\\]{}|\\\\/<>?~`!]*$",
+        "minLength": 1,
+        "maxLength": 100
+      },
+      "maxDepth": 10,
+      "maxSize": 1048576
+    },
+    "auth_scope": {
+      "type": ["string", "null"],
+      "description": "Authorization scope required for this event",
+      "pattern": "^[a-zA-Z0-9:._-]+$",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "safety_context": {
+      "type": ["object", "null"],
+      "description": "Safety and compliance context for the event",
+      "additionalProperties": false,
+      "properties": {
+        "data_classification": {
+          "type": "string",
+          "description": "Data classification level",
+          "enum": ["public", "internal", "confidential", "restricted"]
+        },
+        "sensitivity_level": {
+          "type": "string",
+          "description": "Sensitivity level of the data",
+          "enum": ["low", "medium", "high", "critical"]
+        },
+        "retention_policy": {
+          "type": "string",
+          "description": "Retention policy identifier",
+          "pattern": "^[a-zA-Z0-9\\._-]+$",
+          "maxLength": 50
+        },
+        "access_required": {
+          "type": "string",
+          "description": "Access requirements",
+          "enum": ["none", "basic", "enhanced", "privileged"]
+        },
+        "compliance_flags": {
+          "type": "array",
+          "description": "Compliance flags for regulatory requirements",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z0-9_]+$"
+          },
+          "maxItems": 10
+        },
+        "privacy_level": {
+          "type": "string",
+          "description": "Privacy level classification",
+          "enum": ["public", "private", "sensitive", "restricted"]
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "timestamp": "2025-01-15T10:30:00Z",
+      "source": "io-speech",
+      "intent": "transcribe.audio",
+      "payload": {
+        "audio_url": "https://storage.example.com/audio/123.wav",
+        "language": "en-US",
+        "format": "wav"
+      }
+    },
+    {
+      "timestamp": "2025-01-15T10:31:15.123Z",
+      "source": "echo-skill",
+      "intent": "skill.response",
+      "payload": {
+        "message": "Hello, how can I help you today?",
+        "confidence": 0.95,
+        "metadata": {
+          "processing_time_ms": 150
+        }
+      },
+      "auth_scope": "skill:execute",
+      "safety_context": {
+        "data_classification": "internal",
+        "sensitivity_level": "low",
+        "access_required": "basic"
+      }
+    }
+  ]
+}
