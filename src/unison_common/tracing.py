@@ -347,11 +347,11 @@ class CorrelationMiddleware:
 
 def get_correlation_id(request) -> str:
     """Get correlation ID from FastAPI request"""
-    return request.state.get("correlation_id") or str(uuid.uuid4())
+    return getattr(request.state, "correlation_id", None) or str(uuid.uuid4())
 
 def get_trace_context(request) -> TraceContext:
     """Get trace context from FastAPI request"""
-    return request.state.get("trace_context") or TraceContext()
+    return getattr(request.state, "trace_context", None) or TraceContext()
 
 # Utility functions for common tracing patterns
 def trace_http_request(method: str, url: str, status_code: int, 

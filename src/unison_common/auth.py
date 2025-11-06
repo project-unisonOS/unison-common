@@ -64,13 +64,21 @@ async def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Dep
     """Verify JWT token and return user information"""
     
     if not credentials:
-        raise AuthError("No authentication token provided")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No authentication token provided",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
     
     # Verify token with auth service
     token_data = await verify_token_with_auth_service(credentials.credentials)
     
     if not token_data or not token_data.get("valid"):
-        raise AuthError("Invalid or expired authentication token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired authentication token",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
     
     return {
         "username": token_data.get("username"),
@@ -102,8 +110,9 @@ def require_roles(required_roles: List[str]):
         user_roles = current_user.get("roles", [])
         
         if not any(role in user_roles for role in required_roles):
-            raise PermissionError(
-                f"Insufficient permissions. Required: {required_roles}, User has: {user_roles}"
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Insufficient permissions. Required roles: {required_roles}"
             )
         
         return current_user

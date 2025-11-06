@@ -175,30 +175,22 @@ class IdempotencyKeyRequiredMiddleware(BaseHTTPMiddleware):
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Require idempotency key for specific paths"""
+        from starlette.responses import JSONResponse
         
         # Check if this path requires an idempotency key
         if request.url.path in self.required_paths:
             idempotency_key = extract_idempotency_key(dict(request.headers))
             
             if not idempotency_key:
-                raise HTTPException(
+                return JSONResponse(
                     status_code=400,
-                    detail={
-                        "error": "Idempotency key required",
-                        "message": "This endpoint requires an Idempotency-Key header",
-                        "header_name": "Idempotency-Key",
-                        "header_format": "UUID v4"
-                    }
+                    content={"detail": "Idempotency-Key header is required. Please provide a valid UUID v4."}
                 )
             
             if not validate_idempotency_key(idempotency_key):
-                raise HTTPException(
+                return JSONResponse(
                     status_code=400,
-                    detail={
-                        "error": "Invalid idempotency key",
-                        "message": "Idempotency key must be a valid UUID v4",
-                        "provided_key": idempotency_key
-                    }
+                    content={"detail": f"Invalid Idempotency-Key format. Must be a valid UUID v4. Provided: {idempotency_key}"}
                 )
         
         return await call_next(request)
