@@ -169,11 +169,11 @@ class PrometheusMetrics:
             
             for bucket in buckets:
                 count = sum(1 for v in values_sorted if v <= bucket)
-                bucket_key = metric_key.replace("}", f',le="{bucket}"}') if labels else f'{name}{{le="{bucket}"}}'
+                bucket_key = metric_key.replace("}", f',le="{bucket}"}}') if labels else f'{name}{{{{le="{bucket}"}}}}'
                 lines.append(f"{bucket_key} {count}")
             
             # Add +Inf bucket
-            inf_key = metric_key.replace("}", ',le="+Inf"}') if labels else f'{name}{{le="+Inf"}}'
+            inf_key = metric_key.replace("}", ',le="+Inf"}}') if labels else f'{name}{{{{le="+Inf"}}}}'
             lines.append(f"{inf_key} {len(values)}")
             
             # Add sum and count

@@ -10,13 +10,20 @@ import time
 logger = logging.getLogger(__name__)
 
 # Configuration
-SECRET_KEY = os.getenv("UNISON_JWT_SECRET", "your-secret-key")
-ALGORITHM = "HS256"
+ALGORITHM = "RS256"  # RS256 default
 AUTH_SERVICE_URL = os.getenv("UNISON_AUTH_SERVICE_URL", "http://auth:8088")
 SERVICE_SECRET = os.getenv("UNISON_SERVICE_SECRET", "default-service-secret")
 CONSENT_SERVICE_URL = os.getenv("UNISON_CONSENT_SERVICE_URL", "http://consent:7072")
 CONSENT_SECRET = os.getenv("UNISON_CONSENT_SECRET", "consent-secret-key")
 CONSENT_AUDIENCE = os.getenv("UNISON_CONSENT_AUDIENCE", "orchestrator")
+
+# JWKS configuration for RS256 verification
+JWKS_URL = f"{AUTH_SERVICE_URL}/.well-known/jwks.json"
+JWKS_CACHE_TTL_SECONDS = int(os.getenv("UNISON_AUTH_JWKS_CACHE_TTL_SECONDS", "300"))
+_jwks_cache = {"keys": None, "expires": 0, "etag": None}
+EXPECTED_ISSUER = os.getenv("UNISON_AUTH_ISSUER")  # optional hardening
+EXPECTED_AUDIENCE = os.getenv("UNISON_AUTH_AUDIENCE")  # optional hardening
+JWKS_REFRESH_SECONDS = int(os.getenv("UNISON_AUTH_JWKS_REFRESH_SECONDS", "0"))
 
 security = HTTPBearer(auto_error=False)
 
@@ -33,6 +40,160 @@ class PermissionError(Exception):
         self.message = message
         self.status_code = status_code
         super().__init__(self.message)
+
+# P0.1: JWKS functions for RS256 verification
+async def get_jwks(force_refresh: bool = False) -> Dict[str, Any]:
+    """Get JWKS from auth service with caching and conditional requests."""
+    global _jwks_cache
+
+    # Serve from cache unless force_refresh requested or expired
+    if not force_refresh and time.time() < _jwks_cache["expires"] and _jwks_cache["keys"]:
+        return _jwks_cache["keys"]
+
+    try:
+        headers = {}
+        if _jwks_cache.get("etag") and not force_refresh:
+            headers["If-None-Match"] = _jwks_cache["etag"]
+
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(JWKS_URL, headers=headers)
+
+        if response.status_code == 304 and _jwks_cache["keys"]:
+            # Not modified; extend TTL
+            _jwks_cache["expires"] = time.time() + JWKS_CACHE_TTL_SECONDS
+            return _jwks_cache["keys"]
+
+        response.raise_for_status()
+        jwks = response.json()
+        _jwks_cache["keys"] = jwks
+        _jwks_cache["expires"] = time.time() + JWKS_CACHE_TTL_SECONDS
+        _jwks_cache["etag"] = response.headers.get("etag")
+        logger.debug("Fetched JWKS (etag=%s)", _jwks_cache["etag"])
+        return jwks
+
+    except httpx.RequestError as e:
+        logger.error(f"Failed to fetch JWKS: {e}")
+        if _jwks_cache["keys"]:
+            # Serve stale cache if available
+            logger.warning("Serving stale JWKS from cache due to fetch error")
+            return _jwks_cache["keys"]
+        raise AuthError("Unable to fetch verification keys")
+    except Exception as e:
+        logger.error(f"Unexpected error fetching JWKS: {e}")
+        if _jwks_cache["keys"]:
+            logger.warning("Serving stale JWKS from cache due to unexpected error")
+            return _jwks_cache["keys"]
+        raise AuthError("Unable to fetch verification keys")
+
+# Optional background JWKS refresher
+_jwks_refresh_thread = None
+_jwks_refresh_stop = False
+
+def _jwks_refresher():
+    import time as _time
+    import asyncio as _asyncio
+    while not _jwks_refresh_stop:
+        try:
+            # Run async get_jwks in a new loop per tick
+            _asyncio.run(get_jwks())
+        except Exception:
+            pass
+        # Sleep refresh interval, or default to cache TTL if set shorter
+        interval = JWKS_REFRESH_SECONDS if JWKS_REFRESH_SECONDS > 0 else 300
+        _time.sleep(interval)
+
+def start_jwks_background_refresh():
+    global _jwks_refresh_thread
+    if JWKS_REFRESH_SECONDS <= 0:
+        return
+    if _jwks_refresh_thread and _jwks_refresh_thread.is_alive():
+        return
+    import threading
+    _jwks_refresh_thread = threading.Thread(target=_jwks_refresher, daemon=True)
+    _jwks_refresh_thread.start()
+
+def find_public_key(kid: str, jwks: Dict[str, Any]) -> Optional[str]:
+    """Find public key by key ID in JWKS"""
+    for key in jwks.get("keys", []):
+        if key.get("kid") == kid:
+            return key
+    return None
+
+def construct_rsa_public_key(jwk_key: Dict[str, Any]) -> str:
+    """Construct RSA public key from JWK format"""
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.hazmat.backends import default_backend
+    import base64
+    
+    def base64url_decode(input_str):
+        # Add padding if needed
+        padding = len(input_str) % 4
+        if padding:
+            input_str += '=' * (4 - padding)
+        return base64.urlsafe_b64decode(input_str)
+    
+    try:
+        # Extract modulus and exponent
+        n = int.from_bytes(base64url_decode(jwk_key["n"]), byteorder='big')
+        e = int.from_bytes(base64url_decode(jwk_key["e"]), byteorder='big')
+        
+        # Create RSA public key
+        public_key = rsa.RSAPublicNumbers(e, n).public_key(default_backend())
+        
+        # Convert to PEM format
+        pem = public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+        
+        return pem.decode('utf-8')
+        
+    except Exception as e:
+        logger.error(f"Failed to construct RSA public key: {e}")
+        raise AuthError("Invalid public key format")
+
+async def verify_rs256_token_locally(token: str) -> Dict[str, Any]:
+    """Verify RS256 JWT locally using JWKS"""
+    try:
+        # Get unverified header to find key ID
+        unverified_header = jwt.get_unverified_header(token)
+        kid = unverified_header.get("kid")
+        
+        if not kid:
+            raise JWTError("Token missing key ID (kid)")
+        
+        # Get JWKS and find the public key
+        jwks = await get_jwks()
+        jwk_key = find_public_key(kid, jwks)
+        
+        if not jwk_key:
+            # Force refresh JWKS once in case of rotation, then try again
+            jwks = await get_jwks(force_refresh=True)
+            jwk_key = find_public_key(kid, jwks)
+            if not jwk_key:
+                raise JWTError(f"Unknown key ID: {kid}")
+        
+        # Construct public key
+        public_key_pem = construct_rsa_public_key(jwk_key)
+        
+        # Verify token
+        decode_kwargs = {"algorithms": [ALGORITHM]}
+        if EXPECTED_ISSUER:
+            decode_kwargs["issuer"] = EXPECTED_ISSUER
+        if EXPECTED_AUDIENCE:
+            decode_kwargs["audience"] = EXPECTED_AUDIENCE
+
+        payload = jwt.decode(token, public_key_pem, **decode_kwargs)
+        
+        return payload
+        
+    except JWTError as e:
+        logger.warning(f"RS256 token verification failed: {e}")
+        raise AuthError(f"Invalid token: {str(e)}")
+    except Exception as e:
+        logger.error(f"Unexpected error verifying token: {e}")
+        raise AuthError("Token verification failed")
 
 async def verify_token_with_auth_service(token: str) -> Optional[Dict[str, Any]]:
     """Verify JWT token with auth service"""
@@ -70,22 +231,39 @@ async def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Dep
             headers={"WWW-Authenticate": "Bearer"}
         )
     
-    # Verify token with auth service
-    token_data = await verify_token_with_auth_service(credentials.credentials)
-    
-    if not token_data or not token_data.get("valid"):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired authentication token",
-            headers={"WWW-Authenticate": "Bearer"}
-        )
-    
-    return {
-        "username": token_data.get("username"),
-        "roles": token_data.get("roles", []),
-        "token_type": token_data.get("type"),
-        "exp": token_data.get("exp")
-    }
+    try:
+        # P0.1: Try local RS256 verification first (faster, no network call)
+        payload = await verify_rs256_token_locally(credentials.credentials)
+        
+        # Validate required claims
+        if not payload.get("sub"):
+            raise AuthError("Token missing subject claim")
+        
+        return {
+            "username": payload.get("sub"),
+            "roles": payload.get("roles", []),
+            "token_type": payload.get("type"),
+            "exp": payload.get("exp")
+        }
+        
+    except AuthError:
+        # Fallback to auth service verification for compatibility
+        logger.debug("Local verification failed, trying auth service fallback")
+        token_data = await verify_token_with_auth_service(credentials.credentials)
+        
+        if not token_data or not token_data.get("valid"):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired authentication token",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+        
+        return {
+            "username": token_data.get("username"),
+            "roles": token_data.get("roles", []),
+            "token_type": token_data.get("type"),
+            "exp": token_data.get("exp")
+        }
 
 async def verify_service_token(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Dict[str, Any]:
     """Verify service token for inter-service communication"""
@@ -145,10 +323,14 @@ def require_user():
 
 def create_service_token(service_name: str, service_secret: str = None) -> str:
     """Create a service token for inter-service communication"""
+    # P0.1: Service tokens should be created by auth service
+    # This function is deprecated - use auth service /token endpoint instead
+    logger.warning("create_service_token is deprecated - use auth service /token endpoint")
+    
     if service_secret is None:
         service_secret = SERVICE_SECRET
     
-    # This should use the same secret as the auth service
+    # Fallback to HS256 for backward compatibility during migration
     payload = {
         "sub": f"service-{service_name}",
         "type": "service",
@@ -159,7 +341,8 @@ def create_service_token(service_name: str, service_secret: str = None) -> str:
     }
     
     try:
-        return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+        # Use HS256 for legacy service tokens during migration
+        return jwt.encode(payload, service_secret, algorithm="HS256")
     except Exception as e:
         logger.error(f"Failed to create service token: {e}")
         raise AuthError("Failed to create service token")
@@ -167,7 +350,18 @@ def create_service_token(service_name: str, service_secret: str = None) -> str:
 def verify_service_token_locally(token: str) -> bool:
     """Verify service token locally (for when auth service is unavailable)"""
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        # P0.1: Try RS256 verification first
+        try:
+            unverified_header = jwt.get_unverified_header(token)
+            if unverified_header.get("kid"):
+                # RS256 token - we can't verify async here, return False to trigger service verification
+                # This maintains backward compatibility
+                return False
+        except:
+            pass
+        
+        # Fallback to HS256 for legacy tokens
+        payload = jwt.decode(token, SERVICE_SECRET, algorithms=["HS256"])
         return (
             payload.get("type") == "service" and
             "service" in payload.get("roles", []) and
@@ -396,10 +590,23 @@ def create_auth_middleware(
 def verify_consent_grant_locally(grant_token: str) -> Dict[str, Any]:
     """Verify a consent grant JWT locally without network calls"""
     try:
+        # P0.1: Try RS256 verification first for consent grants
+        try:
+            unverified_header = jwt.get_unverified_header(grant_token)
+            if unverified_header.get("kid"):
+                # RS256 token - we can't verify async here, raise to trigger service verification
+                raise JWTError("RS256 consent grants require async verification")
+        except JWTError:
+            # Re-raise JWT errors from RS256 check
+            raise
+        except:
+            pass
+        
+        # Fallback to HS256 for legacy tokens
         payload = jwt.decode(
             grant_token,
             CONSENT_SECRET,
-            algorithms=[ALGORITHM],
+            algorithms=["HS256"],
             audience=CONSENT_AUDIENCE,
             issuer="unison-consent"
         )
