@@ -9,6 +9,7 @@ import json
 import os
 from typing import Any, Dict, List, Optional
 from pathlib import Path
+import importlib.resources as ilr
 import logging
 
 try:
@@ -25,8 +26,8 @@ from .envelope import EnvelopeValidationError
 
 logger = logging.getLogger(__name__)
 
-# Default schema directory
-SCHEMA_DIR = Path(__file__).parent.parent / "schemas"
+# Default schema directory (project root /schemas)
+SCHEMA_DIR = (Path(__file__).parent.parent.parent / "schemas").resolve()
 
 class SchemaValidationError(EnvelopeValidationError):
     """Raised when JSON Schema validation fails"""
@@ -58,16 +59,24 @@ class EnvelopeSchemaValidator:
     
     def _load_default_schemas(self):
         """Load default schemas from the schemas directory"""
-        if not self.schema_dir.exists():
-            logger.warning(f"Schema directory not found: {self.schema_dir}")
-            return
-        
-        # Load event envelope schema
-        event_schema_path = self.schema_dir / "event-envelope.json"
-        if event_schema_path.exists():
-            self.load_schema("event-envelope", event_schema_path)
-        else:
-            logger.warning(f"Event envelope schema not found: {event_schema_path}")
+        # Prefer filesystem schemas dir
+        if self.schema_dir.exists():
+            event_schema_path = self.schema_dir / "event-envelope.json"
+            if event_schema_path.exists():
+                self.load_schema("event-envelope", event_schema_path)
+                return
+            else:
+                logger.warning(f"Event envelope schema not found: {event_schema_path}")
+
+        # Fallback to package resources
+        try:
+            with ilr.as_file(ilr.files("unison_common").joinpath("../schemas/event-envelope.json")) as p:
+                if p.exists():
+                    self.load_schema("event-envelope", p)
+                    return
+        except Exception:
+            pass
+        logger.warning("Could not load default event-envelope schema from filesystem or package resources")
     
     def load_schema(self, name: str, schema_path: Path):
         """
@@ -142,6 +151,13 @@ class EnvelopeSchemaValidator:
         try:
             # Validate the data
             validator.validate(data)
+            # Enforce unknown top-level fields if additionalProperties is false
+            schema = self._schemas[schema_name]
+            if isinstance(data, dict) and not schema.get("additionalProperties", True):
+                allowed = set((schema.get("properties") or {}).keys())
+                unknown = set(data.keys()) - allowed
+                if unknown:
+                    raise SchemaValidationError(f"Unknown top-level fields not allowed: {unknown}")
             
             logger.debug(f"Data validated successfully against schema '{schema_name}'")
             return data
@@ -184,7 +200,7 @@ class EnvelopeSchemaValidator:
             error_path = " -> ".join(str(p) for p in error.absolute_path) if error.absolute_path else "root"
             errors.append({
                 "path": error_path,
-                "message": error.message,
+                "message": f"{error_path}: {error.message}",
                 "schema_path": " -> ".join(str(p) for p in error.schema_path) if error.schema_path else None,
                 "failed_value": error.instance
             })

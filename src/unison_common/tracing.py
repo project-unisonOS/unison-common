@@ -13,12 +13,15 @@ from functools import wraps
 from opentelemetry import trace, context, baggage
 from opentelemetry.trace import Status, StatusCode, SpanKind
 from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.exporter.jaeger.thrift import JaegerExporter
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
-from opentelemetry.propagate import inject, extract
+from opentelemetry.propagate import inject, extract, set_global_textmap
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.propagators.b3 import B3MultiFormat
 from opentelemetry.propagators.jaeger import JaegerPropagator
 
@@ -31,11 +34,11 @@ class TracingConfig:
         self.service_name = os.getenv("OTEL_SERVICE_NAME", "unison-service")
         self.service_version = os.getenv("OTEL_SERVICE_VERSION", "1.0.0")
         self.environment = os.getenv("OTEL_ENVIRONMENT", "development")
-        self.jaeger_endpoint = os.getenv("OTEL_JAEGER_ENDPOINT", "http://jaeger:14268/api/traces")
-        self.otlp_endpoint = os.getenv("OTEL_OTLP_ENDPOINT", "http://jaeger:4317")
+        self.jaeger_endpoint = os.getenv("OTEL_JAEGER_ENDPOINT", "")
+        self.otlp_endpoint = os.getenv("OTEL_OTLP_ENDPOINT", "")
         self.sample_rate = float(os.getenv("OTEL_SAMPLE_RATE", "1.0"))
         self.enabled = os.getenv("OTEL_ENABLED", "true").lower() == "true"
-        self.propagator = os.getenv("OTEL_PROPAGATOR", "b3")  # b3, jaeger, or tracecontext
+        self.propagator = os.getenv("OTEL_PROPAGATOR", "tracecontext")  # tracecontext, b3, or jaeger
 
 class TraceContext:
     """Trace context for correlation and distributed tracing"""
@@ -100,28 +103,31 @@ class DistributedTracer:
     def _initialize_tracing(self):
         """Initialize OpenTelemetry tracing"""
         try:
+            # Configure resource with semantic attributes
+            resource = Resource.create({
+                ResourceAttributes.SERVICE_NAME: self.config.service_name,
+                ResourceAttributes.SERVICE_VERSION: self.config.service_version,
+                ResourceAttributes.DEPLOYMENT_ENVIRONMENT: self.config.environment,
+            })
+
+            # Configure sampler from sample_rate (0.0-1.0)
+            ratio = max(0.0, min(1.0, float(self.config.sample_rate)))
+            sampler = ParentBased(TraceIdRatioBased(ratio))
+
             # Set up tracer provider
-            trace.set_tracer_provider(TracerProvider())
+            trace.set_tracer_provider(TracerProvider(resource=resource, sampler=sampler))
             tracer_provider = trace.get_tracer_provider()
             
             # Configure propagator
             if self.config.propagator == "b3":
-                from opentelemetry.propagate import set_global_textmap
                 set_global_textmap(B3MultiFormat())
             elif self.config.propagator == "jaeger":
-                from opentelemetry.propagate import set_global_textmap
                 set_global_textmap(JaegerPropagator())
+            else:
+                # Default to W3C tracecontext
+                set_global_textmap(TraceContextTextMapPropagator())
             
-            # Set up exporters
-            if self.config.jaeger_endpoint:
-                jaeger_exporter = JaegerExporter(
-                    endpoint=self.config.jaeger_endpoint,
-                    collector_endpoint=self.config.jaeger_endpoint,
-                )
-                tracer_provider.add_span_processor(
-                    BatchSpanProcessor(jaeger_exporter)
-                )
-            
+            # Set up exporters (Jaeger disabled by default; prefer OTLP)
             if self.config.otlp_endpoint:
                 otlp_exporter = OTLPSpanExporter(
                     endpoint=self.config.otlp_endpoint,
@@ -247,7 +253,7 @@ def instrument_fastapi(app):
 def instrument_httpx():
     """Instrument HTTPX client"""
     if get_tracer()._initialized:
-        HTTPXClientInstrumentor.instrument()
+        HTTPXClientInstrumentor().instrument()
 
 def trace_span(name: str = None, kind: SpanKind = SpanKind.INTERNAL):
     """Decorator for tracing functions"""

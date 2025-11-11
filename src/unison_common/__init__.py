@@ -118,6 +118,36 @@ from .monitoring import (
     log_error,
 )
 
+from .auth_rs256 import (
+    JWKSClient,
+    RS256TokenVerifier,
+    initialize_verifier,
+    get_verifier,
+    verify_token,
+    verify_token_safe,
+)
+
+from .consent_rs256 import (
+    ConsentVerifier,
+    initialize_consent_verifier,
+    get_consent_verifier,
+    verify_consent_grant as verify_consent_grant_rs256,
+    check_consent_header as check_consent_header_rs256,
+    ConsentScopes as ConsentScopesRS256,
+)
+
+from .tracing_middleware import (
+    TracingMiddleware,
+    format_traceparent,
+    get_request_id,
+    add_request_id_to_logs,
+)
+
+from .http_client_tracing import (
+    TracingHTTPClient,
+    create_tracing_client,
+)
+
 __all__ = [
     "validate_event_envelope",
     "EnvelopeValidationError",
@@ -203,4 +233,22 @@ __all__ = [
     "log_metric",
     "log_event",
     "log_error",
+    "JWKSClient",
+    "RS256TokenVerifier",
+    "initialize_verifier",
+    "get_verifier",
+    "verify_token",
+    "verify_token_safe",
+    "ConsentVerifier",
+    "initialize_consent_verifier",
+    "get_consent_verifier",
+    "verify_consent_grant_rs256",
+    "check_consent_header_rs256",
+    "ConsentScopesRS256",
+    "TracingMiddleware",
+    "format_traceparent",
+    "get_request_id",
+    "add_request_id_to_logs",
+    "TracingHTTPClient",
+    "create_tracing_client",
 ]

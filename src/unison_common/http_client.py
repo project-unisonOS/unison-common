@@ -2,6 +2,7 @@ from typing import Dict, Tuple, Optional
 import httpx
 import time
 import logging
+import random
 
 JsonDict = dict
 
@@ -37,17 +38,28 @@ def _inject_tracing_headers(headers: Optional[Dict[str, str]] = None) -> Dict[st
     return headers
 
 
-def _request_with_retry(method: str, host: str, port: str, path: str, payload: Optional[JsonDict] = None,
-                         headers: Optional[Dict[str, str]] = None, *,
-                         max_retries: int = 3, base_delay: float = 0.1, max_delay: float = 2.0,
-                         timeout: float = 2.0) -> Tuple[bool, int, Optional[JsonDict]]:
+def _request_with_retry(
+    method: str,
+    host: str,
+    port: str,
+    path: str,
+    payload: Optional[JsonDict] = None,
+    headers: Optional[Dict[str, str]] = None,
+    *,
+    max_retries: int = 3,
+    base_delay: float = 0.1,
+    max_delay: float = 2.0,
+    timeout: float = 2.0,
+    retry_on_status: Tuple[int, ...] = (500, 502, 503, 504),
+    retry_on_exceptions: Tuple[type, ...] = (httpx.ConnectError, httpx.ReadTimeout, httpx.RemoteProtocolError),
+) -> Tuple[bool, int, Optional[JsonDict]]:
     url = f"http://{host}:{port}{path}"
     attempt = 0
     last_status = 0
     last_body: Optional[JsonDict] = None
     start_time = time.time()
     
-    # Inject tracing headers
+    # Inject tracing headers (preserved across retries)
     headers = _inject_tracing_headers(headers)
     
     # Log request attempt with tracing
@@ -89,8 +101,11 @@ def _request_with_retry(method: str, host: str, port: str, path: str, payload: O
                 total_duration = (time.time() - start_time) * 1000
                 logger.info(f"HTTP {method} {url} success in {total_duration:.2f}ms")
                 return True, r.status_code, last_body
-                
-        except Exception as e:
+            # Non-2xx: decide if retryable
+            if r.status_code not in retry_on_status:
+                break
+
+        except retry_on_exceptions as e:
             request_duration = (time.time() - request_start) * 1000
             logger.warning(f"HTTP {method} {url} attempt {attempt + 1} failed: {e}")
             
@@ -98,11 +113,17 @@ def _request_with_retry(method: str, host: str, port: str, path: str, payload: O
             if TRACING_AVAILABLE:
                 trace_http_request(method, url, 0, request_duration, headers)
                 trace_service_call(f"{host}:{port}", f"{method} {path}", request_duration, False, str(e))
+        except Exception as e:
+            # Non-retryable exception
+            logger.error(f"HTTP {method} {url} non-retryable error: {e}")
+            break
         
         if attempt == max_retries:
             break
         
-        sleep_for = min(max_delay, base_delay * (2 ** attempt))
+        # Exponential backoff with jitter
+        backoff = base_delay * (2 ** attempt)
+        sleep_for = min(max_delay, backoff + random.uniform(0, base_delay))
         time.sleep(sleep_for)
         attempt += 1
     

@@ -238,7 +238,7 @@ def validate_safety_context(safety_context: Any) -> Dict[str, Any]:
     
     return sanitized_context
 
-def validate_event_envelope(envelope: Dict[str, Any]) -> Dict[str, Any]:
+def validate_event_envelope(envelope: Dict[str, Any], *, allow_unknown: bool = False) -> Dict[str, Any]:
     """
     Validate and sanitize event envelope with enhanced security checks
     
@@ -293,11 +293,26 @@ def validate_event_envelope(envelope: Dict[str, Any]) -> Dict[str, Any]:
         logger.error(f"Unexpected error during envelope validation: {e}")
         raise EnvelopeValidationError("Envelope validation failed")
     
-    # Reject unknown top-level fields
     allowed_fields = set(REQUIRED_FIELDS + ["auth_scope", "safety_context"])
     unknown_fields = set(envelope.keys()) - allowed_fields
-    if unknown_fields:
-        raise EnvelopeValidationError(f"Unknown top-level fields not allowed: {unknown_fields}")
+    # Reject unknown top-level fields unless explicitly allowed
+    if not allow_unknown:
+        if unknown_fields:
+            raise EnvelopeValidationError(f"Unknown top-level fields not allowed: {unknown_fields}")
+    else:
+        # Preserve unknown fields (sanitized) so JSON Schema can validate them
+        for k in unknown_fields:
+            v = envelope[k]
+            if isinstance(v, str):
+                sanitized_envelope[k] = sanitize_string(v)
+            elif isinstance(v, dict):
+                sanitized_envelope[k] = sanitize_dict(v)
+            elif isinstance(v, list):
+                sanitized_envelope[k] = sanitize_list(v)
+            elif isinstance(v, (int, float, bool)):
+                sanitized_envelope[k] = v
+            else:
+                sanitized_envelope[k] = sanitize_string(str(v))
     
     # Log validation for security monitoring
     logger.info(f"Envelope validated successfully", extra={
@@ -325,7 +340,8 @@ def validate_event_envelope_with_schema(envelope: Dict[str, Any],
         SchemaValidationError: If schema validation fails
     """
     # First, perform programmatic validation and sanitization
-    sanitized_envelope = validate_event_envelope(envelope)
+    # Allow unknown fields so JSON Schema can report on them (or be ignored when disabled)
+    sanitized_envelope = validate_event_envelope(envelope, allow_unknown=True)
     
     # Then, perform JSON Schema validation if available and requested
     if use_schema_validation and SCHEMA_VALIDATION_AVAILABLE:
@@ -364,7 +380,8 @@ def validate_event_envelope_with_details(envelope: Dict[str, Any],
     
     # Programmatic validation
     try:
-        sanitized_envelope = validate_event_envelope(envelope)
+        # Allow unknown fields so JSON Schema can report on them (or be ignored when disabled)
+        sanitized_envelope = validate_event_envelope(envelope, allow_unknown=True)
         results["sanitized_envelope"] = sanitized_envelope
     except EnvelopeValidationError as e:
         results["programmatic_errors"].append(str(e))

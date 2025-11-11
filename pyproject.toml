@@ -56,9 +56,10 @@ test = [
 
 [tool.setuptools]
 package-dir = {"" = "src"}
+include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-unison_common = ["py.typed"]
+unison_common = ["py.typed", "../schemas/*.json"]

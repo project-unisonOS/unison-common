@@ -46,18 +46,32 @@ class HTTPConnectionPool:
             )
             
             # Async client for async operations
-            self._client = httpx.AsyncClient(
-                limits=limits,
-                timeout=httpx.Timeout(10.0, connect=5.0),
-                http2=True  # Enable HTTP/2 for better performance
-            )
+            # Try to enable HTTP/2 if available, but don't fail if not
+            try:
+                self._client = httpx.AsyncClient(
+                    limits=limits,
+                    timeout=httpx.Timeout(10.0, connect=5.0),
+                    http2=True  # Enable HTTP/2 for better performance
+                )
+            except ImportError:
+                # Fall back to HTTP/1.1 if h2 is not installed
+                self._client = httpx.AsyncClient(
+                    limits=limits,
+                    timeout=httpx.Timeout(10.0, connect=5.0)
+                )
             
             # Sync client for synchronous operations
-            self._sync_client = httpx.Client(
-                limits=limits,
-                timeout=httpx.Timeout(10.0, connect=5.0),
-                http2=True
-            )
+            try:
+                self._sync_client = httpx.Client(
+                    limits=limits,
+                    timeout=httpx.Timeout(10.0, connect=5.0),
+                    http2=True
+                )
+            except ImportError:
+                self._sync_client = httpx.Client(
+                    limits=limits,
+                    timeout=httpx.Timeout(10.0, connect=5.0)
+                )
             
             logger.info("HTTP connection pool initialized (max_connections=100)")
     
