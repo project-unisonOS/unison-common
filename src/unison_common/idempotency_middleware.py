@@ -6,6 +6,7 @@ in FastAPI applications, preventing duplicate request processing.
 """
 
 import time
+from datetime import datetime
 from typing import Dict, Any, Optional, Callable
 from fastapi import Request, Response, HTTPException
 from fastapi.responses import JSONResponse
@@ -149,7 +150,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                 
                 # Add idempotency headers to response
                 response.headers['Idempotency-Key'] = idempotency_key
-                response.headers['Idempotency-Created-At'] = time.time()
+                response.headers['Idempotency-Created-At'] = datetime.utcnow().isoformat()
                 
                 processing_time = (time.time() - start_time) * 1000
                 logger.info(f"Processed and cached idempotent request: {idempotency_key} in {processing_time:.2f}ms")
@@ -213,7 +214,7 @@ def create_idempotency_response(idempotency_key: str, response_data: Dict[str, A
     headers = {
         'Idempotency-Key': idempotency_key,
         'Idempotency-Original-Response': str(status_code),
-        'Idempotency-Created-At': time.time()
+        'Idempotency-Created-At': datetime.utcnow().isoformat()
     }
     
     return JSONResponse(
