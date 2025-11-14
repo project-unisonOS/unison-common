@@ -20,7 +20,7 @@ def replay_store():
     store = MemoryReplayStore(config)
     
     # Add test envelopes
-    base_time = datetime.utcnow()
+    base_time = now_utc()
     
     # Trace 1: Success, user1, echo intent
     store.store_envelope(StoredEnvelope(
@@ -129,7 +129,7 @@ class TestTraceFiltering:
     
     def test_filter_by_date_range(self, replay_store):
         """Test filtering traces by date range"""
-        base_time = datetime.utcnow()
+        base_time = now_utc()
         start_date = base_time - timedelta(hours=1, minutes=30)
         end_date = base_time
         
@@ -292,3 +292,4 @@ class TestExportData:
         
         assert len(envelopes) > 0
         assert all(env.trace_id == "trace1" for env in envelopes)
+from unison_common.datetime_utils import now_utc

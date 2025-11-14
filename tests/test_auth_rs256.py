@@ -229,8 +229,8 @@ class TestRS256TokenVerifier:
         mock_jwks_client.get_signing_key.return_value = "mock-public-key"
         mock_decode.return_value = {
             "sub": "user123",
-            "exp": int((datetime.utcnow() + timedelta(hours=1)).timestamp()),
-            "iat": int(datetime.utcnow().timestamp())
+            "exp": int((now_utc() + timedelta(hours=1)).timestamp()),
+            "iat": int(now_utc().timestamp())
         }
         
         token = "mock.jwt.token"
@@ -320,3 +320,4 @@ class TestGlobalVerifier:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+from unison_common.datetime_utils import now_utc

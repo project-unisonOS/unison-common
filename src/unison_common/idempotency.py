@@ -11,8 +11,10 @@ import time
 import uuid
 from typing import Dict, Optional, Any, Tuple
 from dataclasses import dataclass, asdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
+
+from .datetime_utils import now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -41,9 +43,16 @@ class IdempotencyRecord:
     def from_dict(cls, data: Dict[str, Any]) -> 'IdempotencyRecord':
         """Create from dictionary from storage"""
         # Convert ISO strings back to datetime objects
-        data['created_at'] = datetime.fromisoformat(data['created_at'])
-        data['expires_at'] = datetime.fromisoformat(data['expires_at'])
+        data['created_at'] = ensure_utc(datetime.fromisoformat(data['created_at']))
+        data['expires_at'] = ensure_utc(datetime.fromisoformat(data['expires_at']))
         return cls(**data)
+
+
+def ensure_utc(value: datetime) -> datetime:
+    """Attach UTC tzinfo when a datetime is naive."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
 
 
 class IdempotencyConfig:
@@ -71,7 +80,8 @@ class MemoryIdempotencyStore:
         self._cleanup_expired()
         record = self._records.get(key)
         
-        if record and record.expires_at > datetime.utcnow():
+        now = now_utc()
+        if record and ensure_utc(record.expires_at) > now:
             return record
         elif record:
             # Remove expired record
@@ -99,10 +109,10 @@ class MemoryIdempotencyStore:
     
     def _cleanup_expired(self):
         """Clean up expired records"""
-        now = datetime.utcnow()
+        now = now_utc()
         expired_keys = [
             key for key, record in self._records.items()
-            if record.expires_at <= now
+            if ensure_utc(record.expires_at) <= now
         ]
         
         for key in expired_keys:
@@ -171,7 +181,7 @@ class RedisIdempotencyStore:
             data = json.dumps(record.to_dict())
             
             # Calculate TTL in seconds
-            ttl_seconds = int((record.expires_at - datetime.utcnow()).total_seconds())
+            ttl_seconds = int((ensure_utc(record.expires_at) - now_utc()).total_seconds())
             ttl_seconds = max(1, ttl_seconds)  # Ensure at least 1 second TTL
             
             self.redis_client.setex(key, ttl_seconds, data)
@@ -279,7 +289,7 @@ class IdempotencyManager:
         ttl_seconds = min(ttl_seconds, self.config.max_ttl_seconds)
         
         # Create record
-        now = datetime.utcnow()
+        now = now_utc()
         request_hash = None
         if self.config.hash_request_body:
             request_hash = self.hash_request(method, url, body, user_id)
@@ -356,12 +366,15 @@ def validate_idempotency_key(key: str) -> bool:
 
 
 def extract_idempotency_key(headers: Dict[str, str]) -> Optional[str]:
-    """Extract idempotency key from headers"""
-    # Check common header names
-    for header_name in ['Idempotency-Key', 'X-Idempotency-Key', 'Idempotency-Key']:
-        if header_name in headers:
-            key = headers[header_name]
-            if validate_idempotency_key(key):
-                return key
-    
+    """Extract idempotency key from headers (case-insensitive)."""
+    if not headers:
+        return None
+
+    normalized = {name.lower(): value for name, value in headers.items()}
+
+    for header_name in ("idempotency-key", "x-idempotency-key"):
+        key = normalized.get(header_name)
+        if key and validate_idempotency_key(key):
+            return key
+
     return None
