@@ -433,7 +433,7 @@ class RateLimiter:
     
     async def is_allowed(self, key: str, limit: int, window: int) -> bool:
         """Check if request is allowed"""
-        now = datetime.utcnow()
+        now = now_utc()
         window_start = now - timedelta(seconds=window)
         
         # Clean old requests
@@ -454,7 +454,7 @@ class RateLimiter:
         """Periodically clean old request records"""
         while True:
             await asyncio.sleep(60)  # Clean every minute
-            now = datetime.utcnow()
+            now = now_utc()
             window_start = now - timedelta(seconds=3600)  # 1 hour window
             
             for key in list(self.requests.keys()):
@@ -717,3 +717,4 @@ async def require_consent_grant(
         raise AuthError(f"Consent grant purpose not allowed: {grant_payload.get('purpose')}")
     
     return grant_payload
+from .datetime_utils import now_utc

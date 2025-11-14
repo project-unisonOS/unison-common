@@ -13,6 +13,8 @@ from typing import Dict, Any, List, Optional, Callable
 from datetime import datetime
 from enum import Enum
 
+from .datetime_utils import isoformat_utc
+
 logger = logging.getLogger(__name__)
 
 
@@ -256,7 +258,7 @@ class HealthCheck:
                     "status": status.value if isinstance(status, HealthStatus) else status,
                     "details": details,
                     "duration_ms": round(duration, 2),
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": isoformat_utc()
                 }
                 
                 # Update overall status
@@ -270,7 +272,7 @@ class HealthCheck:
                 results[name] = {
                     "status": HealthStatus.UNHEALTHY.value,
                     "details": {"error": str(e)},
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": isoformat_utc()
                 }
                 overall_status = HealthStatus.UNHEALTHY
         
@@ -281,7 +283,7 @@ class HealthCheck:
             "status": overall_status.value,
             "uptime_seconds": round(time.time() - self._start_time, 2),
             "checks": results,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": isoformat_utc()
         }
     
     def get_last_results(self) -> Dict[str, Any]:

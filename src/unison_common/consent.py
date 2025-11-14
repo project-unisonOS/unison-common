@@ -1,16 +1,17 @@
+import os
+import httpx
+import logging
+from typing import Dict, Any, List, Optional
+from fastapi import HTTPException, status, Depends, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from datetime import datetime, timedelta
+
+FAIL_OPEN = os.getenv("UNISON_CONSENT_FAIL_OPEN", "true").lower() == "true"
 """
 Consent grant verification for Unison platform.
 
 M5.2: Scope-based authorization with consent grants.
 """
-
-import os
-import httpx
-import logging
-from typing import Dict, Any, List, Optional
-from fastapi import HTTPException, status, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 security = HTTPBearer()
@@ -121,15 +122,20 @@ async def verify_consent_grant(
             
     except httpx.RequestError as e:
         logger.error(f"Failed to connect to consent service: {e}")
-        # Graceful degradation: if consent service is down, log warning but allow
-        # This can be configured to fail closed in production
-        logger.warning("Consent service unavailable - allowing request (fail open)")
-        return {
-            "active": True,
-            "sub": "unknown",
-            "scopes": required_scopes,
-            "degraded": True
-        }
+        if FAIL_OPEN:
+            # Graceful degradation: allow when configured to fail open
+            logger.warning("Consent service unavailable - allowing request (fail open)")
+            return {
+                "active": True,
+                "sub": "unknown",
+                "scopes": required_scopes,
+                "degraded": True
+            }
+        # Fail closed when configured
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Consent service unavailable"
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -152,22 +158,27 @@ def require_consent(required_scopes: List[str]):
             ...
     """
     async def consent_checker(
+        request: Request,
         credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
     ) -> Dict[str, Any]:
-        if not credentials:
+        # Prefer X-Consent-Grant header if provided
+        consent_header = request.headers.get("x-consent-grant") or request.headers.get("X-Consent-Grant")
+        consent_token: Optional[str] = None
+        if consent_header:
+            consent_token = consent_header
+        elif credentials:
+            # Extract consent token from Authorization header
+            consent_token = credentials.credentials
+        else:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No consent grant provided",
                 headers={"WWW-Authenticate": "Bearer"}
             )
-        
-        # Extract consent token from Authorization header
-        # Format: "Bearer <consent_token>"
-        consent_token = credentials.credentials
-        
+
         # Verify consent grant
         grant_data = await verify_consent_grant(consent_token, required_scopes)
-        
+
         return grant_data
     
     return consent_checker

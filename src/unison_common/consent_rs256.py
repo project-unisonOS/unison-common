@@ -73,7 +73,7 @@ class ConsentVerifier:
         if self._revoked_fetched_at is None:
             return False
         
-        age = datetime.utcnow() - self._revoked_fetched_at
+        age = now_utc() - self._revoked_fetched_at
         return age < self.revoked_cache_ttl
     
     async def fetch_revoked_list(self, force: bool = False) -> Set[str]:
@@ -102,7 +102,7 @@ class ConsentVerifier:
                 
                 # Update cache
                 self._revoked_jtis = set(revoked_list)
-                self._revoked_fetched_at = datetime.utcnow()
+                self._revoked_fetched_at = now_utc()
                 
                 logger.info(f"Fetched {len(self._revoked_jtis)} revoked grants")
                 return self._revoked_jtis
@@ -197,7 +197,7 @@ class ConsentVerifier:
         if exp is None:
             raise JWTError("Token missing exp claim")
         
-        if datetime.utcnow().timestamp() > exp:
+        if now_utc().timestamp() > exp:
             raise JWTError("Token has expired")
         
         # Check issuer
@@ -317,3 +317,4 @@ async def check_consent_header(
     
     # Verify the consent grant
     return await verify_consent_grant(consent_token, required_scopes)
+from .datetime_utils import now_utc

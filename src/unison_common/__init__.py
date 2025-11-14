@@ -148,6 +148,21 @@ from .http_client_tracing import (
     create_tracing_client,
 )
 
+from .durability import (
+    DurabilityConfig,
+    DurabilityManager,
+    DurabilityMetrics,
+    PIIScrubber,
+    RecoveryManager,
+    TTLManager,
+    WALManager,
+)
+
+from .datetime_utils import (
+    now_utc,
+    isoformat_utc,
+)
+
 __all__ = [
     "validate_event_envelope",
     "EnvelopeValidationError",
@@ -251,4 +266,13 @@ __all__ = [
     "add_request_id_to_logs",
     "TracingHTTPClient",
     "create_tracing_client",
+    "DurabilityConfig",
+    "DurabilityManager",
+    "DurabilityMetrics",
+    "PIIScrubber",
+    "RecoveryManager",
+    "TTLManager",
+    "WALManager",
+    "now_utc",
+    "isoformat_utc",
 ]

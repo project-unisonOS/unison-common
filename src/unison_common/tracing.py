@@ -6,9 +6,11 @@ import uuid
 import time
 import logging
 import os
+import inspect
 from typing import Dict, Any, Optional, List
 from contextlib import contextmanager
 from functools import wraps
+import httpx
 
 from opentelemetry import trace, context, baggage
 from opentelemetry.trace import Status, StatusCode, SpanKind
@@ -19,7 +21,6 @@ from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.propagate import inject, extract, set_global_textmap
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.propagators.b3 import B3MultiFormat
@@ -252,8 +253,16 @@ def instrument_fastapi(app):
 
 def instrument_httpx():
     """Instrument HTTPX client"""
-    if get_tracer()._initialized:
-        HTTPXClientInstrumentor().instrument()
+    if not get_tracer()._initialized:
+        return
+
+    if not inspect.isclass(httpx.AsyncClient):
+        logger.warning("HTTPX instrumentation skipped: httpx.AsyncClient patched to non-class")
+        return
+
+    from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+
+    HTTPXClientInstrumentor().instrument()
 
 def trace_span(name: str = None, kind: SpanKind = SpanKind.INTERNAL):
     """Decorator for tracing functions"""

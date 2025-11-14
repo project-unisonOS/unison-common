@@ -47,7 +47,7 @@ class JWKSClient:
         if self._jwks is None or self._jwks_fetched_at is None:
             return False
         
-        age = datetime.utcnow() - self._jwks_fetched_at
+        age = now_utc() - self._jwks_fetched_at
         return age < self.cache_ttl
     
     def fetch_jwks(self, force: bool = False) -> Dict:
@@ -74,7 +74,7 @@ class JWKSClient:
             
             # Cache JWKS
             self._jwks = jwks
-            self._jwks_fetched_at = datetime.utcnow()
+            self._jwks_fetched_at = now_utc()
             
             # Build kid -> key mapping
             self._keys_by_kid = {}
@@ -291,3 +291,4 @@ def verify_token_safe(token: str) -> Optional[Dict]:
         Decoded payload or None if invalid
     """
     return get_verifier().verify_token_safe(token)
+from .datetime_utils import now_utc

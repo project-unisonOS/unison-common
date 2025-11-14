@@ -155,7 +155,7 @@ class MemoryReplayStore:
         session = ReplaySession(
             session_id=session_id,
             trace_id=trace_id,
-            created_at=datetime.utcnow(),
+            created_at=now_utc(),
             created_by=created_by,
             status="created",
             total_envelopes=len(envelopes),
@@ -301,7 +301,7 @@ class MemoryReplayStore:
         if now - self._last_cleanup < self.config.cleanup_interval_hours * 3600:
             return
         
-        cutoff_time = datetime.utcnow() - timedelta(days=self.config.default_retention_days)
+        cutoff_time = now_utc() - timedelta(days=self.config.default_retention_days)
         removed_traces = []
         
         for trace_id, envelopes in self._envelopes.items():
@@ -317,7 +317,7 @@ class MemoryReplayStore:
             del self._envelopes[trace_id]
         
         # Clean up old sessions
-        session_cutoff = datetime.utcnow() - timedelta(hours=self.config.max_session_duration_hours)
+        session_cutoff = now_utc() - timedelta(hours=self.config.max_session_duration_hours)
         expired_sessions = [
             session_id for session_id, session in self._sessions.items()
             if session.created_at < session_cutoff
@@ -373,7 +373,7 @@ class ReplayManager:
             trace_id=trace_id,
             correlation_id=correlation_id,
             envelope_data=envelope_data,
-            timestamp=datetime.utcnow(),
+            timestamp=now_utc(),
             event_type=event_type,
             source=source,
             user_id=user_id,
@@ -524,3 +524,4 @@ def initialize_replay(config: Optional[ReplayConfig] = None, store=None):
     """Initialize the global replay manager"""
     global _default_manager
     _default_manager = ReplayManager(config, store)
+from .datetime_utils import now_utc, isoformat_utc

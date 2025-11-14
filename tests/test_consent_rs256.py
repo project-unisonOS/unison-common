@@ -121,7 +121,7 @@ class TestConsentVerifier:
         """Test graceful degradation when revocation list unavailable"""
         # Pre-populate cache
         verifier._revoked_jtis = {"jti-1", "jti-2"}
-        verifier._revoked_fetched_at = datetime.utcnow()
+        verifier._revoked_fetched_at = now_utc()
         
         with patch('httpx.AsyncClient') as mock_client:
             mock_client.return_value.__aenter__.return_value.get = AsyncMock(
@@ -139,8 +139,8 @@ class TestConsentVerifier:
             "sub": "user123",
             "aud": "orchestrator",
             "iss": "unison-consent",
-            "iat": int(datetime.utcnow().timestamp()),
-            "exp": int((datetime.utcnow() + timedelta(hours=1)).timestamp()),
+            "iat": int(now_utc().timestamp()),
+            "exp": int((now_utc() + timedelta(hours=1)).timestamp()),
             "jti": str(uuid.uuid4()),
             "scopes": ["unison.ingest.write"],
             "purpose": "test",
@@ -156,8 +156,8 @@ class TestConsentVerifier:
             "sub": "user123",
             "aud": "orchestrator",
             "iss": "unison-consent",
-            "iat": int((datetime.utcnow() - timedelta(hours=2)).timestamp()),
-            "exp": int((datetime.utcnow() - timedelta(hours=1)).timestamp()),  # Expired
+            "iat": int((now_utc() - timedelta(hours=2)).timestamp()),
+            "exp": int((now_utc() - timedelta(hours=1)).timestamp()),  # Expired
             "jti": str(uuid.uuid4()),
             "scopes": ["unison.ingest.write"],
             "purpose": "test",
@@ -173,8 +173,8 @@ class TestConsentVerifier:
             "sub": "user123",
             "aud": "orchestrator",
             "iss": "evil-issuer",  # Wrong issuer
-            "iat": int(datetime.utcnow().timestamp()),
-            "exp": int((datetime.utcnow() + timedelta(hours=1)).timestamp()),
+            "iat": int(now_utc().timestamp()),
+            "exp": int((now_utc() + timedelta(hours=1)).timestamp()),
             "jti": str(uuid.uuid4()),
             "scopes": ["unison.ingest.write"],
             "purpose": "test",
@@ -190,8 +190,8 @@ class TestConsentVerifier:
             "sub": "user123",
             "aud": "orchestrator",
             "iss": "unison-consent",
-            "iat": int(datetime.utcnow().timestamp()),
-            "exp": int((datetime.utcnow() + timedelta(hours=1)).timestamp()),
+            "iat": int(now_utc().timestamp()),
+            "exp": int((now_utc() + timedelta(hours=1)).timestamp()),
             "jti": str(uuid.uuid4()),
             "scopes": ["unison.ingest.write"],
             "purpose": "test",
@@ -205,7 +205,7 @@ class TestConsentVerifier:
     async def test_check_revocation_not_revoked(self, verifier):
         """Test checking non-revoked grant"""
         verifier._revoked_jtis = {"jti-1", "jti-2"}
-        verifier._revoked_fetched_at = datetime.utcnow()
+        verifier._revoked_fetched_at = now_utc()
         
         payload = {
             "jti": "jti-3"  # Not in revoked list
@@ -218,7 +218,7 @@ class TestConsentVerifier:
     async def test_check_revocation_is_revoked(self, verifier):
         """Test checking revoked grant"""
         verifier._revoked_jtis = {"jti-1", "jti-2"}
-        verifier._revoked_fetched_at = datetime.utcnow()
+        verifier._revoked_fetched_at = now_utc()
         
         payload = {
             "jti": "jti-1"  # In revoked list
@@ -332,3 +332,4 @@ class TestGlobalVerifier:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+from unison_common.datetime_utils import now_utc

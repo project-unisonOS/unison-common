@@ -184,13 +184,15 @@ class IdempotencyKeyRequiredMiddleware(BaseHTTPMiddleware):
             if not idempotency_key:
                 return JSONResponse(
                     status_code=400,
-                    content={"detail": "Idempotency-Key header is required. Please provide a valid UUID v4."}
+                    content={"detail": "Idempotency key required. Provide Idempotency-Key header with a valid UUID v4."},
                 )
-            
+
             if not validate_idempotency_key(idempotency_key):
                 return JSONResponse(
                     status_code=400,
-                    content={"detail": f"Invalid Idempotency-Key format. Must be a valid UUID v4. Provided: {idempotency_key}"}
+                    content={
+                        "detail": f"Invalid Idempotency-Key format. Must be a valid UUID v4. Provided: {idempotency_key}"
+                    },
                 )
         
         return await call_next(request)
