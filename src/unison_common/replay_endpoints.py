@@ -251,9 +251,9 @@ async def get_replay_statistics(
     
     try:
         stats = replay_manager.get_statistics()
-        
+        replay_stats = stats.get("replay_system", stats)
         return {
-            "replay_system": stats,
+            "replay_system": replay_stats,
             "requested_by": current_user.get("username"),
             "timestamp": replay_manager.store._last_cleanup
         }
