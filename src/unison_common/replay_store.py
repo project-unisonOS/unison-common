@@ -496,16 +496,16 @@ class ReplayManager:
     
     def get_statistics(self) -> Dict[str, Any]:
         """Get replay system statistics"""
-        stats = self.store.get_statistics()
-        stats.update({
+        store_stats = self.store.get_statistics()
+        return {
+            "replay_system": store_stats,
             "config": {
                 "default_retention_days": self.config.default_retention_days,
                 "max_envelopes_per_trace": self.config.max_envelopes_per_trace,
                 "max_stored_envelopes": self.config.max_stored_envelopes,
-                "compression_enabled": self.config.compression_enabled
-            }
-        })
-        return stats
+                "compression_enabled": self.config.compression_enabled,
+            },
+        }
 
 
 # Global instance for easy access
