@@ -133,6 +133,29 @@ manager = get_replay_manager()
 history = manager.get_replay_history("trace-123")
 ```
 
+### Context Baton (per-request capability token)
+
+```python
+from unison_common import BatonService, BatonMiddleware
+from fastapi import FastAPI
+
+service = BatonService()
+token = service.issue(
+    subject="person-123",
+    scopes=["ingest", "replay"],
+    audience=["orchestrator"],
+    ttl_seconds=300,
+)
+
+app = FastAPI()
+# Validates signature/expiry when X-Context-Baton header is present
+app.add_middleware(BatonMiddleware, service=service, required_scopes=["ingest"])
+```
+
+Keys are stored at `BATON_KEY_PATH` (default `/tmp/unison_baton_ed25519.pem`).
+Tokens are Ed25519-signed JSON envelopes containing subject, scopes, audience,
+TTL, provenance, and optional metadata.
+
 ## 🧪 Testing
 
 ```bash

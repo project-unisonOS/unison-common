@@ -29,6 +29,7 @@ dependencies = [
     "fastapi>=0.115.0",
     "httpx>=0.27.2",
     "python-jose[cryptography]>=3.3.0",
+    "cryptography>=41.0.0",
     "bleach>=6.0.0",
     "redis>=5.0.0",
     "jsonschema>=4.17.0",
@@ -51,7 +52,15 @@ Repository = "https://github.com/project-unisonOS/unison.git"
 [project.optional-dependencies]
 test = [
     "pytest>=8.3.3",
-    "pytest-asyncio>=0.24.0"
+    "pytest-asyncio>=0.24.0",
+    "opentelemetry-api==1.21.0",
+    "opentelemetry-sdk==1.21.0",
+    "opentelemetry-exporter-jaeger==1.21.0",
+    "opentelemetry-exporter-jaeger-proto-grpc==1.21.0",
+    "opentelemetry-exporter-otlp==1.21.0",
+    "opentelemetry-exporter-otlp-proto-grpc==1.21.0",
+    "opentelemetry-propagator-b3==1.21.0",
+    "opentelemetry-propagator-jaeger==1.21.0"
 ]
 
 [tool.setuptools]
@@ -60,6 +69,7 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["unison_common", "unison_common.*"]
 
 [tool.setuptools.package-data]
-unison_common = ["py.typed", "../schemas/*.json"]
+unison_common = ["py.typed", "schemas/*.json"]

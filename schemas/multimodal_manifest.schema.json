@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Multimodal Capability Manifest",
+  "type": "object",
+  "required": ["modalities"],
+  "properties": {
+    "version": { "type": "string", "default": "1.0.0" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "deployment_mode": { "type": "string", "enum": ["host", "container", "hybrid"] },
+    "modalities": {
+      "type": "object",
+      "properties": {
+        "displays": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "resolution": { "type": "string" },
+              "primary": { "type": "boolean" }
+            },
+            "required": ["id"]
+          }
+        },
+        "speakers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" }
+            },
+            "required": ["id"]
+          }
+        },
+        "microphones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" }
+            },
+            "required": ["id"]
+          }
+        },
+        "cameras": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" }
+            },
+            "required": ["id"]
+          }
+        }
+      }
+    }
+  }
+}

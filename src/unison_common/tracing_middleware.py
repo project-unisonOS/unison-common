@@ -11,6 +11,9 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from opentelemetry import trace
 from opentelemetry.trace import SpanKind
+from opentelemetry.propagate import extract
+
+from unison_common.tracing import _format_traceparent_from_context
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +61,9 @@ class TracingMiddleware(BaseHTTPMiddleware):
         # Store request ID in request state for access in handlers
         request.state.request_id = request_id
         
-        # Extract traceparent if present
+        # Extract upstream context (supports both traceparent and configured propagator)
+        carrier = {k.lower(): v for k, v in request.headers.items()}
+        otel_ctx = extract(carrier)
         traceparent = request.headers.get("traceparent")
         
         # Create span for this request
@@ -66,6 +71,7 @@ class TracingMiddleware(BaseHTTPMiddleware):
         
         with self.tracer.start_as_current_span(
             span_name,
+            context=otel_ctx,
             kind=SpanKind.SERVER
         ) as span:
             # Add span attributes
@@ -101,13 +107,12 @@ class TracingMiddleware(BaseHTTPMiddleware):
                 
                 # Add tracing headers to response
                 response.headers["x-request-id"] = request_id
+                response.headers["X-Request-Id"] = request_id
                 
                 # Get current span context for traceparent
                 span_context = span.get_span_context()
-                if span_context.is_valid:
-                    # Format W3C traceparent header
-                    traceparent_header = format_traceparent(span_context)
-                    response.headers["traceparent"] = traceparent_header
+                traceparent_header = _format_traceparent_from_context(span_context, trace_id_override=request_id)
+                response.headers["traceparent"] = traceparent_header
                 
                 # Add status to span
                 span.set_attribute("http.status_code", response.status_code)

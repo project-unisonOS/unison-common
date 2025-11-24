@@ -25,21 +25,46 @@ from opentelemetry.propagate import inject, extract, set_global_textmap
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.propagators.b3 import B3MultiFormat
 from opentelemetry.propagators.jaeger import JaegerPropagator
+from opentelemetry import baggage as otel_baggage
 
 logger = logging.getLogger(__name__)
+
+
+def _format_traceparent_from_context(span_context=None, trace_id_override: Optional[str] = None) -> str:
+    """Create a traceparent header string from a span context or explicit trace id."""
+    if span_context and getattr(span_context, "is_valid", False):
+        trace_id = format(span_context.trace_id, "032x")
+        span_id = format(span_context.span_id, "016x")
+        trace_flags = format(span_context.trace_flags, "02x")
+    else:
+        trace_id = (trace_id_override or uuid.uuid4().hex).replace("-", "")[:32].ljust(32, "0")
+        span_id = uuid.uuid4().hex[:16]
+        trace_flags = "01"
+
+    return f"00-{trace_id}-{span_id}-{trace_flags}"
 
 class TracingConfig:
     """Configuration for OpenTelemetry tracing"""
     
-    def __init__(self):
-        self.service_name = os.getenv("OTEL_SERVICE_NAME", "unison-service")
-        self.service_version = os.getenv("OTEL_SERVICE_VERSION", "1.0.0")
-        self.environment = os.getenv("OTEL_ENVIRONMENT", "development")
-        self.jaeger_endpoint = os.getenv("OTEL_JAEGER_ENDPOINT", "")
-        self.otlp_endpoint = os.getenv("OTEL_OTLP_ENDPOINT", "")
-        self.sample_rate = float(os.getenv("OTEL_SAMPLE_RATE", "1.0"))
-        self.enabled = os.getenv("OTEL_ENABLED", "true").lower() == "true"
-        self.propagator = os.getenv("OTEL_PROPAGATOR", "tracecontext")  # tracecontext, b3, or jaeger
+    def __init__(
+        self,
+        service_name: Optional[str] = None,
+        service_version: Optional[str] = None,
+        environment: Optional[str] = None,
+        jaeger_endpoint: Optional[str] = None,
+        otlp_endpoint: Optional[str] = None,
+        sample_rate: Optional[float] = None,
+        enabled: Optional[bool] = None,
+        propagator: Optional[str] = None,
+    ):
+        self.service_name = service_name or os.getenv("OTEL_SERVICE_NAME", "unison-service")
+        self.service_version = service_version or os.getenv("OTEL_SERVICE_VERSION", "1.0.0")
+        self.environment = environment or os.getenv("OTEL_ENVIRONMENT", "development")
+        self.jaeger_endpoint = jaeger_endpoint or os.getenv("OTEL_JAEGER_ENDPOINT", "http://jaeger:14268/api/traces")
+        self.otlp_endpoint = otlp_endpoint or os.getenv("OTEL_OTLP_ENDPOINT", "http://jaeger:4317")
+        self.sample_rate = float(sample_rate if sample_rate is not None else os.getenv("OTEL_SAMPLE_RATE", "1.0"))
+        self.enabled = enabled if enabled is not None else os.getenv("OTEL_ENABLED", "true").lower() == "true"
+        self.propagator = propagator or os.getenv("OTEL_PROPAGATOR", "b3")  # tracecontext, b3, or jaeger
 
 class TraceContext:
     """Trace context for correlation and distributed tracing"""
@@ -62,32 +87,59 @@ class TraceContext:
         
         if self.parent_span_id:
             headers["X-Parent-Span-Id"] = self.parent_span_id
-            
+        
         # Add baggage items
         for key, value in self.baggage.items():
             headers[f"X-Baggage-{key}"] = str(value)
-            
+        
         return headers
     
     @classmethod
     def from_headers(cls, headers: Dict[str, str]) -> "TraceContext":
         """Create trace context from HTTP headers"""
-        trace_id = headers.get("X-Request-Id") or headers.get("X-Trace-Id")
-        span_id = headers.get("X-Span-Id")
-        parent_span_id = headers.get("X-Parent-Span-Id")
-        
-        # Extract baggage items
-        baggage = {}
+        # Prefer W3C traceparent/baggage when present
+        carrier = {k.lower(): v for k, v in headers.items()}
+        ctx = extract(carrier)
+        span_ctx = trace.get_current_span(ctx).get_span_context()
+        ot_baggage = otel_baggage.get_all(context=ctx)
+        baggage_map = {k: v for k, v in ot_baggage.items()}
+
+        # Custom baggage header (user_id=123,foo=bar)
+        baggage_header = headers.get("baggage") or headers.get("Baggage") or ""
+        for part in baggage_header.split(","):
+            part = part.strip()
+            if "=" in part:
+                k, v = part.split("=", 1)
+                baggage_map[k.strip()] = v.strip()
+
+        # Also honor custom X-Baggage-* if present
         for key, value in headers.items():
-            if key.startswith("X-Baggage-"):
-                baggage_key = key[11:]  # Remove "X-Baggage-" prefix
-                baggage[baggage_key] = value
-        
+            normalized = key.lower()
+            if normalized.startswith("x-baggage-"):
+                baggage_key = key.split("-", 2)[-1] if "-" in key else normalized[11:]
+                baggage_map[baggage_key] = value
+
+        # Prefer explicit headers for IDs when provided
+        trace_id = headers.get("X-Trace-Id") or headers.get("X-Request-Id")
+        span_id = headers.get("X-Span-Id")
+        # Parse explicit traceparent if provided to seed trace id
+        tp_header = headers.get("traceparent") or headers.get("Traceparent")
+        if not trace_id and tp_header:
+            parts = tp_header.split("-")
+            if len(parts) >= 3:
+                trace_id = parts[1]
+                if len(parts) > 2:
+                    span_id = span_id or parts[2]
+        if not trace_id and span_ctx and span_ctx.is_valid:
+            trace_id = format(span_ctx.trace_id, "032x")
+            span_id = span_id or format(span_ctx.span_id, "016x")
+        parent_span_id = headers.get("X-Parent-Span-Id")
+
         return cls(
             trace_id=trace_id,
             span_id=span_id,
             parent_span_id=parent_span_id,
-            baggage=baggage
+            baggage=baggage_map,
         )
 
 class DistributedTracer:
@@ -115,9 +167,27 @@ class DistributedTracer:
             ratio = max(0.0, min(1.0, float(self.config.sample_rate)))
             sampler = ParentBased(TraceIdRatioBased(ratio))
 
-            # Set up tracer provider
-            trace.set_tracer_provider(TracerProvider(resource=resource, sampler=sampler))
+            # Set up tracer provider (allow override so tests can reconfigure)
+            new_provider = TracerProvider(resource=resource, sampler=sampler)
+            try:
+                trace.set_tracer_provider(new_provider, log_warnings=False)  # type: ignore[arg-type]
+            except TypeError:
+                # Older versions do not support log_warnings
+                trace.set_tracer_provider(new_provider)
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.warning("Failed to set tracer provider cleanly, forcing override: %s", exc)
+                try:
+                    trace._TRACER_PROVIDER = new_provider  # type: ignore[attr-defined]
+                except Exception:
+                    pass
             tracer_provider = trace.get_tracer_provider()
+            attrs = getattr(getattr(tracer_provider, "resource", None), "attributes", {}) or {}
+            if attrs.get(ResourceAttributes.SERVICE_NAME) != self.config.service_name:
+                try:
+                    trace._TRACER_PROVIDER = new_provider  # type: ignore[attr-defined]
+                    tracer_provider = new_provider
+                except Exception:
+                    pass
             
             # Configure propagator
             if self.config.propagator == "b3":
@@ -128,8 +198,11 @@ class DistributedTracer:
                 # Default to W3C tracecontext
                 set_global_textmap(TraceContextTextMapPropagator())
             
-            # Set up exporters (Jaeger disabled by default; prefer OTLP)
-            if self.config.otlp_endpoint:
+            # Set up exporters (skip during tests to avoid hanging on shutdown)
+            disable_exporter = os.getenv("PYTEST_CURRENT_TEST") is not None or os.getenv(
+                "UNISON_DISABLE_OTEL_EXPORTER", "false"
+            ).lower() == "true"
+            if self.config.otlp_endpoint and not disable_exporter:
                 otlp_exporter = OTLPSpanExporter(
                     endpoint=self.config.otlp_endpoint,
                     insecure=True
@@ -139,10 +212,7 @@ class DistributedTracer:
                 )
             
             # Get tracer
-            self._tracer = trace.get_tracer(
-                self.config.service_name,
-                self.config.service_version
-            )
+            self._tracer = tracer_provider.get_tracer(self.config.service_name, self.config.service_version)
             
             self._initialized = True
             logger.info(f"OpenTelemetry tracing initialized for {self.config.service_name}")
@@ -155,11 +225,9 @@ class DistributedTracer:
         """Create or extract trace context"""
         if headers:
             return TraceContext.from_headers(headers)
-        else:
-            return TraceContext()
+        return TraceContext()
     
-    def start_span(self, name: str, kind: SpanKind = SpanKind.INTERNAL, 
-                   attributes: Dict[str, Any] = None) -> trace.Span:
+    def start_span(self, name: str, kind: SpanKind = SpanKind.INTERNAL, attributes: Dict[str, Any] = None) -> trace.Span:
         """Start a new span"""
         if not self._initialized:
             return NoOpSpan()
@@ -171,8 +239,7 @@ class DistributedTracer:
         )
     
     @contextmanager
-    def span(self, name: str, kind: SpanKind = SpanKind.INTERNAL,
-             attributes: Dict[str, Any] = None):
+    def span(self, name: str, kind: SpanKind = SpanKind.INTERNAL, attributes: Dict[str, Any] = None):
         """Context manager for spans"""
         span = self.start_span(name, kind, attributes)
         try:
@@ -187,17 +254,38 @@ class DistributedTracer:
     
     def inject_headers(self, headers: Dict[str, str] = None) -> Dict[str, str]:
         """Inject trace context into headers"""
-        if not headers:
-            headers = {}
-        
+        carrier = dict(headers) if headers else {}
+        incoming_request_id = carrier.get("x-request-id") or carrier.get("X-Request-Id")
+
         if self._initialized:
-            inject(headers)
-        
+            try:
+                inject(carrier)
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.debug("Skipping OpenTelemetry header inject: %s", exc)
+
+        current_span = trace.get_current_span()
+        span_ctx = current_span.get_span_context() if current_span else None
+        span_ctx_valid = bool(span_ctx and getattr(span_ctx, "is_valid", False))
+
+        # Ensure traceparent is always present for downstream services
+        if "traceparent" not in carrier:
+            carrier["traceparent"] = _format_traceparent_from_context(span_ctx, trace_id_override=incoming_request_id)
+
         # Always add our custom correlation headers
-        trace_context = self.create_trace_context(headers)
-        headers.update(trace_context.to_headers())
-        
-        return headers
+        trace_context_obj = self.create_trace_context(carrier)
+        request_id = incoming_request_id or trace_context_obj.trace_id
+        carrier.setdefault("x-request-id", request_id)
+        carrier.setdefault("X-Request-Id", request_id)
+        carrier.setdefault("x-trace-id", request_id)
+        carrier.setdefault("X-Trace-Id", request_id)
+
+        # Keep span id aligned with current span if available
+        if span_ctx_valid:
+            carrier.setdefault("X-Span-Id", format(span_ctx.span_id, "016x"))
+        else:
+            carrier.setdefault("X-Span-Id", trace_context_obj.span_id)
+
+        return carrier
     
     def extract_context(self, headers: Dict[str, str]) -> TraceContext:
         """Extract trace context from headers"""
@@ -366,7 +454,12 @@ def get_correlation_id(request) -> str:
 
 def get_trace_context(request) -> TraceContext:
     """Get trace context from FastAPI request"""
-    return getattr(request.state, "trace_context", None) or TraceContext()
+    state = getattr(request, "state", None)
+    if isinstance(state, dict):
+        ctx = state.get("trace_context")
+    else:
+        ctx = getattr(state, "trace_context", None)
+    return ctx or TraceContext()
 
 # Utility functions for common tracing patterns
 def trace_http_request(method: str, url: str, status_code: int, 

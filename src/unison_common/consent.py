@@ -54,7 +54,8 @@ async def verify_consent_grant(
         HTTPException: If grant is invalid or missing required scopes
     """
     # Check cache first
-    cache_key = f"{token}:{':'.join(sorted(required_scopes))}"
+    normalized_scopes = sorted(required_scopes)
+    cache_key = f"{token}:{':'.join(normalized_scopes)}"
     if cache_key in _consent_cache:
         cached = _consent_cache[cache_key]
         if datetime.now() < cached["expires_at"]:
@@ -80,6 +81,9 @@ async def verify_consent_grant(
                 )
             
             grant_data = response.json()
+            # If AsyncMock or coroutine slipped through in tests, await it
+            if callable(getattr(grant_data, "__await__", None)):
+                grant_data = await grant_data  # type: ignore
             
             # Check if grant is active
             if not grant_data.get("active", False):
@@ -122,6 +126,13 @@ async def verify_consent_grant(
             
     except httpx.RequestError as e:
         logger.error(f"Failed to connect to consent service: {e}")
+        # In strict mode (UNISON_REQUIRE_CONSENT=true), fail closed to avoid bypassing scope checks.
+        require_consent_env = os.getenv("UNISON_REQUIRE_CONSENT", "false").lower() == "true"
+        if require_consent_env:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Consent verification failed"
+            )
         if FAIL_OPEN:
             # Graceful degradation: allow when configured to fail open
             logger.warning("Consent service unavailable - allowing request (fail open)")
@@ -140,8 +151,17 @@ async def verify_consent_grant(
         raise
     except Exception as e:
         logger.error(f"Consent verification error: {e}")
+        # Mirror fail-open behavior unless strict
+        require_consent_env = os.getenv("UNISON_REQUIRE_CONSENT", "false").lower() == "true"
+        if not require_consent_env and FAIL_OPEN:
+            return {
+                "active": True,
+                "sub": "unknown",
+                "scopes": required_scopes,
+                "degraded": True
+            }
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_403_FORBIDDEN if require_consent_env else status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Consent verification failed"
         )
 
@@ -217,6 +237,5 @@ async def check_consent_header(
 
 def clear_consent_cache():
     """Clear the consent verification cache"""
-    global _consent_cache
-    _consent_cache = {}
+    _consent_cache.clear()
     logger.info("Consent cache cleared")

@@ -23,6 +23,7 @@ Description-Content-Type: text/markdown
 Requires-Dist: fastapi>=0.115.0
 Requires-Dist: httpx>=0.27.2
 Requires-Dist: python-jose[cryptography]>=3.3.0
+Requires-Dist: cryptography>=41.0.0
 Requires-Dist: bleach>=6.0.0
 Requires-Dist: redis>=5.0.0
 Requires-Dist: jsonschema>=4.17.0
@@ -37,6 +38,14 @@ Requires-Dist: opentelemetry-propagator-jaeger>=1.21.0
 Provides-Extra: test
 Requires-Dist: pytest>=8.3.3; extra == "test"
 Requires-Dist: pytest-asyncio>=0.24.0; extra == "test"
+Requires-Dist: opentelemetry-api==1.21.0; extra == "test"
+Requires-Dist: opentelemetry-sdk==1.21.0; extra == "test"
+Requires-Dist: opentelemetry-exporter-jaeger==1.21.0; extra == "test"
+Requires-Dist: opentelemetry-exporter-jaeger-proto-grpc==1.21.0; extra == "test"
+Requires-Dist: opentelemetry-exporter-otlp==1.21.0; extra == "test"
+Requires-Dist: opentelemetry-exporter-otlp-proto-grpc==1.21.0; extra == "test"
+Requires-Dist: opentelemetry-propagator-b3==1.21.0; extra == "test"
+Requires-Dist: opentelemetry-propagator-jaeger==1.21.0; extra == "test"
 
 # unison-common
 
@@ -172,6 +181,29 @@ store_processing_envelope(
 manager = get_replay_manager()
 history = manager.get_replay_history("trace-123")
 ```
+
+### Context Baton (per-request capability token)
+
+```python
+from unison_common import BatonService, BatonMiddleware
+from fastapi import FastAPI
+
+service = BatonService()
+token = service.issue(
+    subject="person-123",
+    scopes=["ingest", "replay"],
+    audience=["orchestrator"],
+    ttl_seconds=300,
+)
+
+app = FastAPI()
+# Validates signature/expiry when X-Context-Baton header is present
+app.add_middleware(BatonMiddleware, service=service, required_scopes=["ingest"])
+```
+
+Keys are stored at `BATON_KEY_PATH` (default `/tmp/unison_baton_ed25519.pem`).
+Tokens are Ed25519-signed JSON envelopes containing subject, scopes, audience,
+TTL, provenance, and optional metadata.
 
 ## 🧪 Testing
 

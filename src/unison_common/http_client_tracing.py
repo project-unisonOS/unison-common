@@ -4,6 +4,7 @@ HTTP client with automatic tracing header propagation (P0.3)
 
 import httpx
 import logging
+import uuid
 from typing import Optional, Dict, Any
 from opentelemetry import trace
 from opentelemetry.trace import SpanKind
@@ -56,16 +57,18 @@ class TracingHTTPClient:
         
         # Add traceparent from current span
         current_span = trace.get_current_span()
-        if current_span and current_span.get_span_context().is_valid:
-            span_context = current_span.get_span_context()
-            
-            # Format W3C traceparent
+        span_context = current_span.get_span_context() if current_span else None
+        if span_context and span_context.is_valid:
             trace_id = format(span_context.trace_id, '032x')
             span_id = format(span_context.span_id, '016x')
             trace_flags = format(span_context.trace_flags, '02x')
-            
             traceparent = f"00-{trace_id}-{span_id}-{trace_flags}"
             headers["traceparent"] = traceparent
+        else:
+            # Synthesize a traceparent when no span is active so downstream always sees one
+            trace_id = uuid.uuid4().hex
+            span_id = uuid.uuid4().hex[:16]
+            headers["traceparent"] = f"00-{trace_id}-{span_id}-01"
         
         return headers
     

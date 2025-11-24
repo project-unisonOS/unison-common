@@ -238,7 +238,7 @@ def validate_safety_context(safety_context: Any) -> Dict[str, Any]:
     
     return sanitized_context
 
-def validate_event_envelope(envelope: Dict[str, Any], *, allow_unknown: bool = False) -> Dict[str, Any]:
+def _validate_event_envelope(envelope: Dict[str, Any], allow_unknown: bool = False) -> Dict[str, Any]:
     """
     Validate and sanitize event envelope with enhanced security checks
     
@@ -314,13 +314,25 @@ def validate_event_envelope(envelope: Dict[str, Any], *, allow_unknown: bool = F
             else:
                 sanitized_envelope[k] = sanitize_string(str(v))
     
-    # Log validation for security monitoring
-    logger.info(f"Envelope validated successfully", extra={
-        "intent": sanitized_envelope["intent"],
-        "source": sanitized_envelope["source"],
-        "payload_size": len(json.dumps(sanitized_envelope["payload"]))
-    })
-    
+    return sanitized_envelope
+
+
+def validate_event_envelope(envelope: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Public API: validate and sanitize an event envelope.
+    The signature is intentionally stable for contract tests.
+    """
+    sanitized_envelope = _validate_event_envelope(envelope, allow_unknown=False)
+
+    logger.info(
+        "Envelope validated successfully",
+        extra={
+            "intent": sanitized_envelope["intent"],
+            "source": sanitized_envelope["source"],
+            "payload_size": len(json.dumps(sanitized_envelope["payload"])),
+        },
+    )
+
     return sanitized_envelope
 
 def validate_event_envelope_with_schema(envelope: Dict[str, Any], 
@@ -341,7 +353,7 @@ def validate_event_envelope_with_schema(envelope: Dict[str, Any],
     """
     # First, perform programmatic validation and sanitization
     # Allow unknown fields so JSON Schema can report on them (or be ignored when disabled)
-    sanitized_envelope = validate_event_envelope(envelope, allow_unknown=True)
+    sanitized_envelope = _validate_event_envelope(envelope, allow_unknown=True)
     
     # Then, perform JSON Schema validation if available and requested
     if use_schema_validation and SCHEMA_VALIDATION_AVAILABLE:
@@ -381,7 +393,7 @@ def validate_event_envelope_with_details(envelope: Dict[str, Any],
     # Programmatic validation
     try:
         # Allow unknown fields so JSON Schema can report on them (or be ignored when disabled)
-        sanitized_envelope = validate_event_envelope(envelope, allow_unknown=True)
+        sanitized_envelope = _validate_event_envelope(envelope, allow_unknown=True)
         results["sanitized_envelope"] = sanitized_envelope
     except EnvelopeValidationError as e:
         results["programmatic_errors"].append(str(e))

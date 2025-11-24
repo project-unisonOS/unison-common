@@ -5,6 +5,7 @@ import time
 import random
 import httpx
 from typing import Any, Dict, Tuple, Optional
+from unison_common.baton import get_current_baton
 
 def http_post_json_with_retry(
     host: str,
@@ -23,6 +24,9 @@ def http_post_json_with_retry(
     """
     url = f"http://{host}:{port}{path}"
     merged_headers = {"Accept": "application/json"}
+    baton = get_current_baton()
+    if baton:
+        merged_headers["X-Context-Baton"] = baton
     if headers:
         merged_headers.update(headers)
     attempt = 0
@@ -63,6 +67,9 @@ def http_get_json_with_retry(
     """
     url = f"http://{host}:{port}{path}"
     merged_headers = {"Accept": "application/json"}
+    baton = get_current_baton()
+    if baton:
+        merged_headers["X-Context-Baton"] = baton
     if headers:
         merged_headers.update(headers)
     attempt = 0
@@ -103,6 +110,9 @@ def http_put_json_with_retry(
     """
     url = f"http://{host}:{port}{path}"
     merged_headers = {"Accept": "application/json"}
+    baton = get_current_baton()
+    if baton:
+        merged_headers["X-Context-Baton"] = baton
     if headers:
         merged_headers.update(headers)
     attempt = 0

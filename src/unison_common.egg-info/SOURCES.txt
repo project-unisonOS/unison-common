@@ -4,11 +4,15 @@ generate_schema_docs.py
 pyproject.toml
 schema_validation_examples.py
 schemas/event-envelope.json
+schemas/multimodal_manifest.schema.json
 src/unison_common/__init__.py
 src/unison_common/auth.py
 src/unison_common/auth_rs256.py
+src/unison_common/baton.py
 src/unison_common/consent.py
 src/unison_common/consent_rs256.py
+src/unison_common/datetime_utils.py
+src/unison_common/durability.py
 src/unison_common/envelope.py
 src/unison_common/http_client.py
 src/unison_common/http_client_tracing.py
@@ -28,7 +32,12 @@ src/unison_common.egg-info/SOURCES.txt
 src/unison_common.egg-info/dependency_links.txt
 src/unison_common.egg-info/requires.txt
 src/unison_common.egg-info/top_level.txt
+src/unison_common/multimodal/__init__.py
+src/unison_common/multimodal/manifest_client.py
+src/unison_common/schemas/__init__.py
+src/unison_common/schemas/multimodal_manifest.schema.json
 tests/test_auth_rs256.py
+tests/test_baton.py
 tests/test_consent.py
 tests/test_consent_enforcement.py
 tests/test_consent_rs256.py
@@ -37,6 +46,7 @@ tests/test_envelope.py
 tests/test_envelope_validation.py
 tests/test_http_client_resilience.py
 tests/test_integration_propagation.py
+tests/test_jwks_refresh.py
 tests/test_jwks_verifier.py
 tests/test_logging_enrichment.py
 tests/test_logging_redaction.py
@@ -45,6 +55,7 @@ tests/test_multihop_consent_propagation.py
 tests/test_multihop_extended_propagation.py
 tests/test_multihop_inference_propagation.py
 tests/test_multihop_propagation.py
+tests/test_multimodal_manifest.py
 tests/test_performance.py
 tests/test_replay_filtering.py
 tests/test_schema_validation.py
@@ -54,3 +65,4 @@ tests/test_tracing_config.py
 tests/test_tracing_e2e.py
 tests/test_tracing_propagation.py
 tests/contract/__init__.py
+tests/contract/test_schema_contracts.py

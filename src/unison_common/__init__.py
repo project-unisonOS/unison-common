@@ -158,6 +158,20 @@ from .durability import (
     WALManager,
 )
 
+from .baton import (
+    BatonError,
+    BatonMiddleware,
+    BatonService,
+    BatonKeyStore,
+    set_current_baton,
+    get_current_baton,
+)
+
+from .multimodal import (
+    CapabilityClient,
+    validate_manifest,
+)
+
 from .datetime_utils import (
     now_utc,
     isoformat_utc,
@@ -273,6 +287,14 @@ __all__ = [
     "RecoveryManager",
     "TTLManager",
     "WALManager",
+    "BatonService",
+    "BatonError",
+    "BatonMiddleware",
+    "BatonKeyStore",
+    "set_current_baton",
+    "get_current_baton",
+    "CapabilityClient",
+    "validate_manifest",
     "now_utc",
     "isoformat_utc",
 ]
