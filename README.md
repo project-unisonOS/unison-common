@@ -4,6 +4,9 @@ Shared Python utilities for the Unison platform.
 
 This package is intended to be imported by all Unison services (orchestrator, context, storage, policy, etc).
 
+## Status
+Core library (active) — shared middleware/utilities consumed by Python services.
+
 ## 📦 Package Information
 
 **Version**: 0.1.0  
@@ -52,6 +55,13 @@ pip install -e .
 
 ```bash
 pip install -e .[test]
+```
+
+## Testing
+```bash
+python3 -m venv .venv && . .venv/bin/activate
+pip install -c ../constraints.txt -e .[test]
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 OTEL_SDK_DISABLED=true python -m pytest
 ```
 
 ## 🔧 Usage
