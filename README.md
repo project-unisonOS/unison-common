@@ -26,7 +26,7 @@ Core library (active) — shared middleware/utilities consumed by Python service
 
 ### Current Contents
 
-- Event envelope validation (shape and required fields) aligned with `unison-spec/specs/event-envelope.schema.json`
+- Event envelope validation (shape and required fields) aligned with `unison-docs/dev/specs/event-envelope.schema.json`
 - Authentication middleware and JWT utilities
 - Distributed tracing with OpenTelemetry
 - Idempotency middleware for duplicate request prevention
