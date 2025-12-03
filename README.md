@@ -4,9 +4,6 @@ Shared Python utilities for the Unison platform.
 
 This package is intended to be imported by all Unison services (orchestrator, context, storage, policy, etc).
 
-## Status
-Core library (active) — shared middleware/utilities consumed by Python services.
-
 ## 📦 Package Information
 
 **Version**: 0.1.0  
@@ -34,7 +31,7 @@ Core library (active) — shared middleware/utilities consumed by Python service
 - HTTP client with retry and tracing
 - Security utilities and rate limiting
 
-## 📥 Installation
+## 📝 Installation
 
 ### From Private PyPI
 
@@ -57,7 +54,8 @@ pip install -e .
 pip install -e .[test]
 ```
 
-## Testing
+## 🧪 Testing
+
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
 pip install -c ../constraints.txt -e .[test]
@@ -166,105 +164,7 @@ Keys are stored at `BATON_KEY_PATH` (default `/tmp/unison_baton_ed25519.pem`).
 Tokens are Ed25519-signed JSON envelopes containing subject, scopes, audience,
 TTL, provenance, and optional metadata.
 
-## 🧪 Testing
-
-```bash
-# Run all tests
-python -m pytest tests/ -v
-
-# Run specific test modules
-python -m pytest tests/test_auth.py -v
-python -m pytest tests/test_tracing.py -v
-python -m pytest tests/test_idempotency.py -v
-python -m pytest tests/test_replay.py -v
-
-# Run with coverage
-python -m pytest tests/ --cov=unison_common --cov-report=html
-```
-
-## 📚 Development
-
-### Setup Development Environment
-
-```bash
-# Clone repository
-git clone https://github.com/project-unisonOS/unison.git
-cd unison/unison-common
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install in development mode
-pip install -e .[test]
-
-# Install development tools
-pip install black flake8 mypy pytest-cov
-```
-
-### Code Quality
-
-```bash
-# Format code
-black src/ tests/
-
-# Lint code
-flake8 src/ tests/
-
-# Type checking
-mypy src/
-
-# Run all quality checks
-python -m pytest tests/ && black --check src/ tests/ && flake8 src/ tests/ && mypy src/
-```
-
-## 🚀 Publishing
-
-### Automated Publishing
-
-The package can be published automatically using GitHub Actions:
-
-1. Go to Actions → "Publish unison-common"
-2. Click "Run workflow"
-3. Fill in version and repository URL
-4. Choose whether to run as dry run
-
-See [PUBLISHING.md](./PUBLISHING.md) for detailed instructions.
-
-### Manual Publishing
-
-```bash
-# Build package
-python -m build
-
-# Check package
-python -m twine check dist/*
-
-# Publish to private index
-python -m twine upload \
-  --repository-url https://your-private-pypi.com/simple/ \
-  --username your-username \
-  --password your-password \
-  dist/*
-```
-
-## 📋 Dependencies
-
-### Runtime Dependencies
-
-- `fastapi>=0.115.0` - Web framework
-- `httpx>=0.27.2` - HTTP client
-- `python-jose[cryptography]>=3.3.0` - JWT handling
-- `bleach>=6.0.0` - HTML sanitization
-- `redis>=5.0.0` - Redis client
-- `opentelemetry-*>=1.21.0` - Distributed tracing
-
-### Development Dependencies
-
-- `pytest>=8.3.3` - Testing framework
-- `pytest-asyncio>=0.24.0` - Async testing support
-
-## 🔗 Related Projects
+## 📚 Related Projects
 
 - [unison-orchestrator](../unison-orchestrator/) - Main orchestration service
 - [unison-context-graph](../unison-context-graph/) - Context management service
@@ -290,8 +190,13 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](../LIC
 - Update documentation as needed
 - Ensure all tests pass before submitting PR
 
-## 📞 Support
+## 📰 Support
 
 - **Issues**: [GitHub Issues](https://github.com/project-unisonOS/unison/issues)
 - **Documentation**: [Project Documentation](https://github.com/project-unisonOS/unison/blob/main/README.md)
 - **Discussions**: [GitHub Discussions](https://github.com/project-unisonOS/unison/discussions)
+
+## Docs
+
+Full docs at https://project-unisonos.github.io
+
