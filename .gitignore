@@ -22,6 +22,7 @@ dist/
 *.whl
 .env
 .env.*
+!.env.example
 .venv/
 venv/
 env/
@@ -39,4 +40,3 @@ out/
 *.exe
 *.dmg
 *.AppImage
-
