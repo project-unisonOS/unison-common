@@ -50,6 +50,9 @@ Documentation = "https://github.com/project-unisonOS/unison/blob/main/unison-com
 Repository = "https://github.com/project-unisonOS/unison.git"
 "Bug Tracker" = "https://github.com/project-unisonOS/unison/issues"
 
+[project.scripts]
+unison-prompt-engine = "unison_common.prompt.cli:main"
+
 [project.optional-dependencies]
 test = [
     "pytest>=8.3.3",
@@ -73,4 +76,4 @@ where = ["src"]
 include = ["unison_common", "unison_common.*"]
 
 [tool.setuptools.package-data]
-unison_common = ["py.typed", "schemas/*.json"]
+unison_common = ["py.typed", "schemas/*.json", "schemas/prompt/*.json", "schemas/prompt/*.md"]

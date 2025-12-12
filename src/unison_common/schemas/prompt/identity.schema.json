@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://unisonos.ai/schemas/prompt/identity.schema.json",
+  "title": "Unison Prompt Identity",
+  "type": "object",
+  "required": ["schema_version", "communication", "privacy", "anti_sycophancy"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$"
+    },
+    "display_name": { "type": "string", "minLength": 1 },
+    "communication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verbosity", "tone", "clarifying_questions_max"],
+      "properties": {
+        "verbosity": { "type": "string", "enum": ["concise", "normal", "detailed"] },
+        "tone": { "type": "string", "enum": ["direct", "warm", "formal"] },
+        "clarifying_questions_max": { "type": "integer", "minimum": 0, "maximum": 3 }
+      }
+    },
+    "accessibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "prefer_high_contrast": { "type": "boolean" },
+        "avoid_emojis": { "type": "boolean" }
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stance"],
+      "properties": {
+        "stance": { "type": "string", "enum": ["minimal_collection", "balanced", "maximum_privacy"] },
+        "notes": { "type": "string" }
+      }
+    },
+    "anti_sycophancy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["challenge_level"],
+      "properties": {
+        "challenge_level": { "type": "integer", "minimum": 0, "maximum": 3 }
+      }
+    },
+    "decision_principles": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}
+
