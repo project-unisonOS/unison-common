@@ -1,7 +1,7 @@
 """v1 contracts for UnisonOS orchestration + interaction."""
 
 from .actions import ActionEnvelope, ActionResult, PolicyDecision
-from .context import ContextWriteBehindBatch
+from .context import ContextSnapshot, ContextWriteBehindBatch
 from .events import EventGraphAppend, InputEventEnvelope, RendererEventEnvelope
 from .intent import Intent, IntentSession, Plan, PlannerOutput, RouterOutput
 from .rom import ResponseObjectModel, RomBlock, RomCard, RomText
@@ -11,6 +11,7 @@ __all__ = [
     "ActionEnvelope",
     "ActionResult",
     "ContextWriteBehindBatch",
+    "ContextSnapshot",
     "EventGraphAppend",
     "InputEventEnvelope",
     "Intent",
@@ -27,4 +28,3 @@ __all__ = [
     "TraceEvent",
     "TraceSpan",
 ]
-
