@@ -247,6 +247,23 @@ async def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Dep
         }
         
     except AuthError:
+        # Backward-compatible fallback: accept legacy HS256 service tokens issued with UNISON_SERVICE_SECRET.
+        try:
+            service_secret = os.getenv("UNISON_SERVICE_SECRET", SERVICE_SECRET)
+            payload = jwt.decode(credentials.credentials, service_secret, algorithms=["HS256"])
+            if not payload.get("sub"):
+                raise AuthError("Token missing subject claim")
+            exp = int(payload.get("exp") or 0)
+            if exp and exp <= int(time.time()):
+                raise AuthError("Token expired")
+            return {
+                "username": payload.get("sub"),
+                "roles": payload.get("roles", []),
+                "token_type": payload.get("type"),
+                "exp": exp or None,
+            }
+        except Exception:
+            pass
         # Fallback to auth service verification for compatibility
         logger.debug("Local verification failed, trying auth service fallback")
         token_data = await verify_token_with_auth_service(credentials.credentials)
