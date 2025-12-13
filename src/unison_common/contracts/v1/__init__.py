@@ -2,7 +2,7 @@
 
 from .actions import ActionEnvelope, ActionResult, PolicyDecision
 from .context import ContextSnapshot, ContextWriteBehindBatch
-from .events import EventGraphAppend, InputEventEnvelope, RendererEventEnvelope
+from .events import EventGraphAppend, EventGraphEvent, EventGraphQuery, InputEventEnvelope, RendererEventEnvelope
 from .intent import Intent, IntentSession, Plan, PlannerOutput, RouterOutput
 from .rom import ResponseObjectModel, RomBlock, RomCard, RomText
 from .trace import TraceEvent, TraceSpan
@@ -13,6 +13,8 @@ __all__ = [
     "ContextWriteBehindBatch",
     "ContextSnapshot",
     "EventGraphAppend",
+    "EventGraphEvent",
+    "EventGraphQuery",
     "InputEventEnvelope",
     "Intent",
     "IntentSession",

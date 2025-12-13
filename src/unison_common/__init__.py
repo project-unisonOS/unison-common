@@ -139,6 +139,8 @@ from .contracts.v1 import (  # noqa: E402
     ContextWriteBehindBatch,
     ContextSnapshot,
     EventGraphAppend,
+    EventGraphEvent,
+    EventGraphQuery,
 )
 from .trace_artifacts import TraceRecorder, TraceSpanStatus  # noqa: E402
 
