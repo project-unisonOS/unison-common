@@ -118,6 +118,30 @@ from .monitoring import (
     log_error,
 )
 
+# Orchestration framework (v1) contracts + local trace artifacts (Phase 0/1).
+from .contracts.v1 import (  # noqa: E402
+    InputEventEnvelope,
+    IntentSession,
+    Intent,
+    Plan,
+    PlannerOutput,
+    RouterOutput,
+    ActionEnvelope,
+    ActionResult,
+    PolicyDecision,
+    ResponseObjectModel,
+    RomBlock,
+    RomCard,
+    RomText,
+    RendererEventEnvelope,
+    TraceSpan,
+    TraceEvent,
+    ContextWriteBehindBatch,
+    EventGraphAppend,
+)
+from .trace_artifacts import TraceRecorder, TraceSpanStatus  # noqa: E402
+
+
 from .auth_rs256 import (
     JWKSClient,
     RS256TokenVerifier,
