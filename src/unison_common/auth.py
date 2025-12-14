@@ -27,6 +27,12 @@ JWKS_REFRESH_SECONDS = int(os.getenv("UNISON_AUTH_JWKS_REFRESH_SECONDS", "0"))
 
 security = HTTPBearer(auto_error=False)
 
+
+def _allow_hs256_service_tokens() -> bool:
+    """Explicit opt-in for legacy HS256 service tokens (migration only)."""
+    return os.getenv("UNISON_ALLOW_HS256_SERVICE_TOKENS", "false").lower() == "true"
+
+
 class AuthError(Exception):
     """Authentication error exception"""
     def __init__(self, message: str, status_code: int = status.HTTP_401_UNAUTHORIZED):
@@ -247,23 +253,29 @@ async def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Dep
         }
         
     except AuthError:
-        # Backward-compatible fallback: accept legacy HS256 service tokens issued with UNISON_SERVICE_SECRET.
-        try:
-            service_secret = os.getenv("UNISON_SERVICE_SECRET", SERVICE_SECRET)
-            payload = jwt.decode(credentials.credentials, service_secret, algorithms=["HS256"])
-            if not payload.get("sub"):
-                raise AuthError("Token missing subject claim")
-            exp = int(payload.get("exp") or 0)
-            if exp and exp <= int(time.time()):
-                raise AuthError("Token expired")
-            return {
-                "username": payload.get("sub"),
-                "roles": payload.get("roles", []),
-                "token_type": payload.get("type"),
-                "exp": exp or None,
-            }
-        except Exception:
-            pass
+        # Backward-compatible fallback (explicitly gated): accept legacy HS256 *service* tokens.
+        if _allow_hs256_service_tokens():
+            try:
+                service_secret = os.getenv("UNISON_SERVICE_SECRET", SERVICE_SECRET)
+                payload = jwt.decode(credentials.credentials, service_secret, algorithms=["HS256"])
+                if not payload.get("sub"):
+                    raise AuthError("Token missing subject claim")
+                if payload.get("type") != "service" or "service" not in (payload.get("roles") or []):
+                    raise AuthError("HS256 token is not a service token")
+                sub = str(payload.get("sub") or "")
+                if not sub.startswith("service-"):
+                    raise AuthError("HS256 service token subject invalid")
+                exp = int(payload.get("exp") or 0)
+                if exp and exp <= int(time.time()):
+                    raise AuthError("Token expired")
+                return {
+                    "username": payload.get("sub"),
+                    "roles": payload.get("roles", []),
+                    "token_type": payload.get("type"),
+                    "exp": exp or None,
+                }
+            except Exception:
+                pass
         # Fallback to auth service verification for compatibility
         logger.debug("Local verification failed, trying auth service fallback")
         token_data = await verify_token_with_auth_service(credentials.credentials)
@@ -343,6 +355,9 @@ def create_service_token(service_name: str, service_secret: str = None) -> str:
     # P0.1: Service tokens should be created by auth service
     # This function is deprecated - use auth service /token endpoint instead
     logger.warning("create_service_token is deprecated - use auth service /token endpoint")
+
+    if not _allow_hs256_service_tokens():
+        raise AuthError("HS256 service tokens disabled; request a token from unison-auth")
     
     if service_secret is None:
         service_secret = SERVICE_SECRET
@@ -366,6 +381,8 @@ def create_service_token(service_name: str, service_secret: str = None) -> str:
 
 def verify_service_token_locally(token: str) -> bool:
     """Verify service token locally (for when auth service is unavailable)"""
+    if not _allow_hs256_service_tokens():
+        return False
     try:
         # P0.1: Try RS256 verification first
         try:

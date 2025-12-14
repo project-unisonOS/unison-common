@@ -39,11 +39,10 @@ class AuditMiddleware(BaseHTTPMiddleware):
             outcome = "error"
             response = Response(status_code=500)
             log_json(
-                self.logger,
                 logging.ERROR,
-                "request failed",
+                "http.request",
+                message="request failed",
                 service=self.service_name,
-                event="http.request",
                 request_id=request_id,
                 method=request.method,
                 path=request.url.path,
@@ -57,11 +56,10 @@ class AuditMiddleware(BaseHTTPMiddleware):
             raise
 
         log_json(
-            self.logger,
             logging.INFO,
-            "request completed",
+            "http.request",
+            message="request completed",
             service=self.service_name,
-            event="http.request",
             request_id=request_id,
             method=request.method,
             path=request.url.path,
