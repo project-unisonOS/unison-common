@@ -1,8 +1,10 @@
 from typing import Dict, Tuple, Optional
 import httpx
+import os
 import time
 import logging
 import random
+import threading
 
 JsonDict = dict
 
@@ -23,6 +25,36 @@ except ImportError:
     
     def trace_service_call(*args, **kwargs):
         pass
+
+
+_CLIENT_POOL: dict[tuple[str, float], httpx.Client] = {}
+_CLIENT_POOL_LOCK = threading.Lock()
+
+
+def _pool_enabled() -> bool:
+    return os.getenv("UNISON_HTTP_CLIENT_POOL", "true").lower() in {"1", "true", "yes", "on"}
+
+
+def _get_pooled_client(base_url: str, timeout: float) -> httpx.Client:
+    """
+    Return a reusable sync httpx.Client for a base URL.
+
+    This reduces per-request connection setup overhead (DNS/TCP/TLS) and improves
+    latency/throughput under load.
+    """
+    key = (base_url, float(timeout))
+    with _CLIENT_POOL_LOCK:
+        existing = _CLIENT_POOL.get(key)
+        if existing is not None:
+            return existing
+        client = httpx.Client(
+            base_url=base_url,
+            timeout=timeout,
+            limits=httpx.Limits(max_keepalive_connections=50, max_connections=100, keepalive_expiry=30.0),
+            headers={"Connection": "keep-alive"},
+        )
+        _CLIENT_POOL[key] = client
+        return client
 
 
 def _inject_tracing_headers(headers: Optional[Dict[str, str]] = None) -> Dict[str, str]:
@@ -54,6 +86,7 @@ def _request_with_retry(
     retry_on_exceptions: Tuple[type, ...] = (httpx.ConnectError, httpx.ReadTimeout, httpx.RemoteProtocolError),
 ) -> Tuple[bool, int, Optional[JsonDict]]:
     url = f"http://{host}:{port}{path}"
+    base_url = f"http://{host}:{port}"
     attempt = 0
     last_status = 0
     last_body: Optional[JsonDict] = None
@@ -68,15 +101,26 @@ def _request_with_retry(
     while attempt <= max_retries:
         try:
             request_start = time.time()
-            with httpx.Client(timeout=timeout) as client:
-                if method == 'GET':
-                    r = client.get(url, headers=headers)
-                elif method == 'POST':
-                    r = client.post(url, headers=headers, json=payload)
-                elif method == 'PUT':
-                    r = client.put(url, headers=headers, json=payload)
+            if _pool_enabled():
+                client = _get_pooled_client(base_url, timeout=timeout)
+                if method == "GET":
+                    r = client.get(path, headers=headers)
+                elif method == "POST":
+                    r = client.post(path, headers=headers, json=payload)
+                elif method == "PUT":
+                    r = client.put(path, headers=headers, json=payload)
                 else:
                     raise ValueError(f"Unsupported method: {method}")
+            else:
+                with httpx.Client(timeout=timeout) as client:
+                    if method == "GET":
+                        r = client.get(url, headers=headers)
+                    elif method == "POST":
+                        r = client.post(url, headers=headers, json=payload)
+                    elif method == "PUT":
+                        r = client.put(url, headers=headers, json=payload)
+                    else:
+                        raise ValueError(f"Unsupported method: {method}")
             
             request_duration = (time.time() - request_start) * 1000  # Convert to ms
             

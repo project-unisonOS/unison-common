@@ -42,10 +42,13 @@ class ClientStub:
 
 @pytest.mark.parametrize("method", ["GET", "POST", "PUT"])
 def test_retry_on_5xx_then_success(monkeypatch, method):
+    from unison_common import http_client as http_client_module
+
+    http_client_module._CLIENT_POOL.clear()
     # Patch client
     stub = ClientStub()
     stub._sequence = [MockResp(500, {"err": 1}), MockResp(200, {"ok": True})]
-    monkeypatch.setattr(httpx, "Client", lambda timeout=None: stub)
+    monkeypatch.setattr(httpx, "Client", lambda *a, **k: stub)
     # Ensure tracing headers injected and preserved
     monkeypatch.setattr(
         "unison_common.http_client._inject_tracing_headers",
@@ -67,9 +70,12 @@ def test_retry_on_5xx_then_success(monkeypatch, method):
 
 
 def test_retry_on_connect_error_then_success(monkeypatch):
+    from unison_common import http_client as http_client_module
+
+    http_client_module._CLIENT_POOL.clear()
     stub = ClientStub()
     stub._sequence = [httpx.ConnectError("boom"), MockResp(200, {"ok": True})]
-    monkeypatch.setattr(httpx, "Client", lambda timeout=None: stub)
+    monkeypatch.setattr(httpx, "Client", lambda *a, **k: stub)
     monkeypatch.setattr(
         "unison_common.http_client._inject_tracing_headers",
         lambda hdrs=None: {**(hdrs or {}), "x-test": "ok"},
@@ -82,9 +88,12 @@ def test_retry_on_connect_error_then_success(monkeypatch):
 
 
 def test_non_retryable_status_stops(monkeypatch):
+    from unison_common import http_client as http_client_module
+
+    http_client_module._CLIENT_POOL.clear()
     stub = ClientStub()
     stub._sequence = [MockResp(400, {"err": "bad"})]
-    monkeypatch.setattr(httpx, "Client", lambda timeout=None: stub)
+    monkeypatch.setattr(httpx, "Client", lambda *a, **k: stub)
     ok, status, body = http_get_json_with_retry("h", "80", "/p", max_retries=3, base_delay=0.0, max_delay=0.0)
     assert ok is False and status == 400
     # Only one call
