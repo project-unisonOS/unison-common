@@ -143,10 +143,15 @@ class TraceRecorder:
         }
 
     def write_json(self, path: str | Path) -> Path:
+        from unison_common.redaction import redact_obj
+
         target = Path(path)
         target.parent.mkdir(parents=True, exist_ok=True)
         tmp = target.with_suffix(target.suffix + ".tmp")
-        tmp.write_text(json.dumps(self.to_dict(), indent=2, sort_keys=False) + "\n", encoding="utf-8")
+        payload = self.to_dict()
+        if os.getenv("UNISON_REDACT_TRACE_ARTIFACTS", "true").lower() in {"1", "true", "yes", "on"}:
+            payload = redact_obj(payload)
+        tmp.write_text(json.dumps(payload, indent=2, sort_keys=False) + "\n", encoding="utf-8")
         tmp.replace(target)
         return target
 
