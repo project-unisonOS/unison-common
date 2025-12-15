@@ -61,13 +61,17 @@ def _inject_tracing_headers(headers: Optional[Dict[str, str]] = None) -> Dict[st
     """Inject tracing headers into request headers"""
     if not headers:
         headers = {}
+    # httpx requires header values to be non-None strings/bytes.
+    headers = {k: str(v) for k, v in headers.items() if v is not None}
     
     if TRACING_AVAILABLE:
         tracer = get_tracer()
         if tracer:
-            return tracer.inject_headers(headers)
+            injected = tracer.inject_headers(headers)
+            if isinstance(injected, dict):
+                headers = injected
     
-    return headers
+    return {k: str(v) for k, v in headers.items() if v is not None}
 
 
 def _request_with_retry(

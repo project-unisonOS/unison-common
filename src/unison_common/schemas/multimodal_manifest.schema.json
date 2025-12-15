@@ -7,6 +7,56 @@
     "version": { "type": "string", "default": "1.0.0" },
     "generated_at": { "type": "string", "format": "date-time" },
     "deployment_mode": { "type": "string", "enum": ["host", "container", "hybrid"] },
+    "renderer": {
+      "type": "object",
+      "properties": {
+        "assets": {
+          "type": "object",
+          "properties": {
+            "logo": { "type": "string", "description": "Renderer logo asset path or URL." },
+            "startup_earcon": { "type": "string", "description": "Startup earcon asset path or URL." }
+          }
+        }
+      }
+    },
+    "io": {
+      "type": "object",
+      "properties": {
+        "speech": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "endpoint": { "type": "string", "description": "Base URL for io-speech HTTP API." },
+            "ws_endpoint": { "type": "string", "description": "WebSocket URL for io-speech streaming API." },
+            "preferred_input_device": { "type": ["string", "null"] },
+            "preferred_output_device": { "type": ["string", "null"] },
+            "default_asr_profile": { "type": "string", "enum": ["fast", "accurate"], "default": "fast" },
+            "default_tts_profile": { "type": "string", "enum": ["lightweight", "natural"], "default": "lightweight" },
+            "endpointing": {
+              "type": "object",
+              "properties": {
+                "hangover_ms": { "type": "integer", "minimum": 0, "default": 700 },
+                "min_utterance_ms": { "type": "integer", "minimum": 0, "default": 250 },
+                "max_utterance_ms": { "type": "integer", "minimum": 0, "default": 10000 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "models": {
+      "type": "object",
+      "properties": {
+        "planner": {
+          "type": "object",
+          "properties": {
+            "provider": { "type": "string" },
+            "name": { "type": "string" },
+            "endpoint": { "type": "string" }
+          }
+        }
+      }
+    },
     "modalities": {
       "type": "object",
       "properties": {

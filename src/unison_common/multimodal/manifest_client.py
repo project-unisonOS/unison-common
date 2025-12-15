@@ -45,6 +45,9 @@ class CapabilityClient:
                 resp = httpx.get(self.url, timeout=self.timeout)
                 resp.raise_for_status()
                 data = resp.json()
+            # Some services wrap the manifest as {"manifest": {...}, ...}; unwrap for validation.
+            if isinstance(data, dict) and isinstance(data.get("manifest"), dict):
+                data = data["manifest"]
             validate_manifest(data)
             # Preserve original content (with IDs) after validation
             self.manifest = data

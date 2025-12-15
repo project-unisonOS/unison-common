@@ -7,6 +7,9 @@ import httpx
 from typing import Any, Dict, Tuple, Optional
 from unison_common.baton import get_current_baton
 
+def _sanitize_headers(headers: Dict[str, Any]) -> Dict[str, str]:
+    return {k: str(v) for k, v in headers.items() if v is not None}
+
 def http_post_json_with_retry(
     host: str,
     port: str,
@@ -29,6 +32,7 @@ def http_post_json_with_retry(
         merged_headers["X-Context-Baton"] = baton
     if headers:
         merged_headers.update(headers)
+    merged_headers = _sanitize_headers(merged_headers)
     attempt = 0
     last_exception: Exception | None = None
     while attempt <= max_retries:
@@ -72,6 +76,7 @@ def http_get_json_with_retry(
         merged_headers["X-Context-Baton"] = baton
     if headers:
         merged_headers.update(headers)
+    merged_headers = _sanitize_headers(merged_headers)
     attempt = 0
     last_exception: Exception | None = None
     while attempt <= max_retries:
@@ -115,6 +120,7 @@ def http_put_json_with_retry(
         merged_headers["X-Context-Baton"] = baton
     if headers:
         merged_headers.update(headers)
+    merged_headers = _sanitize_headers(merged_headers)
     attempt = 0
     last_exception: Exception | None = None
     while attempt <= max_retries:

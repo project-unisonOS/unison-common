@@ -5,6 +5,16 @@ from .context import ContextSnapshot, ContextWriteBehindBatch
 from .events import EventGraphAppend, EventGraphEvent, EventGraphQuery, InputEventEnvelope, RendererEventEnvelope
 from .intent import Intent, IntentSession, Plan, PlannerOutput, RouterOutput
 from .rom import ResponseObjectModel, RomBlock, RomCard, RomText
+from .speechio import (
+    AsrProfile,
+    BargeInPolicy,
+    EndpointingPolicy,
+    SpeakOptions,
+    SpeakResult,
+    SpeechCapabilities,
+    SpeechStatus,
+    TranscriptEvent,
+)
 from .trace import TraceEvent, TraceSpan
 
 __all__ = [
@@ -27,6 +37,14 @@ __all__ = [
     "RomCard",
     "RomText",
     "RouterOutput",
+    "AsrProfile",
+    "BargeInPolicy",
+    "EndpointingPolicy",
+    "SpeakOptions",
+    "SpeakResult",
+    "SpeechCapabilities",
+    "SpeechStatus",
+    "TranscriptEvent",
     "TraceEvent",
     "TraceSpan",
 ]
