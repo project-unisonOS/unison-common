@@ -151,6 +151,7 @@ from .contracts.v1 import (  # noqa: E402
     EventGraphQuery,
 )
 from .trace_artifacts import TraceRecorder, TraceSpanStatus  # noqa: E402
+from .phase1_trace import Phase1NdjsonTrace, sha256_text  # noqa: E402
 
 
 from .auth_rs256 import (
@@ -332,4 +333,6 @@ __all__ = [
     "validate_manifest",
     "now_utc",
     "isoformat_utc",
+    "Phase1NdjsonTrace",
+    "sha256_text",
 ]
