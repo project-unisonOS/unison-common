@@ -52,6 +52,7 @@ Repository = "https://github.com/project-unisonOS/unison.git"
 
 [project.scripts]
 unison-prompt-engine = "unison_common.prompt.cli:main"
+unison-models = "unison_common.models.cli:main"
 
 [project.optional-dependencies]
 test = [
@@ -76,4 +77,4 @@ where = ["src"]
 include = ["unison_common", "unison_common.*"]
 
 [tool.setuptools.package-data]
-unison_common = ["py.typed", "schemas/*.json", "schemas/prompt/*.json", "schemas/prompt/*.md"]
+unison_common = ["py.typed", "schemas/*.json", "schemas/prompt/*.json", "schemas/prompt/*.md", "schemas/modelpack/*.json"]

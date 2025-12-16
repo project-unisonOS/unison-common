@@ -6,6 +6,6 @@ into an active system prompt at runtime.
 """
 
 from .engine import PromptEngine
+from .injection import PromptInjection, compile_injected_system_prompt
 
-__all__ = ["PromptEngine"]
-
+__all__ = ["PromptEngine", "PromptInjection", "compile_injected_system_prompt"]
