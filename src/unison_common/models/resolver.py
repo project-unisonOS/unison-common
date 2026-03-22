@@ -7,17 +7,21 @@ import platform
 import shutil
 import tarfile
 import tempfile
+import base64
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Optional, Sequence, Tuple
 
 import httpx
 from jsonschema import Draft202012Validator
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from cryptography.hazmat.primitives.serialization import load_pem_public_key
 
 from .errors import ModelPackInvalidError, ModelPackMissingError
 
 
 _MANIFEST_FILENAME = "models.manifest.json"
+_MANIFEST_SIGNATURE_FILENAME = "models.manifest.sig.json"
 _MANIFEST_SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schemas" / "modelpack" / "manifest.v1.schema.json"
 
 
@@ -54,6 +58,52 @@ def _host_compat() -> tuple[str, str]:
     if arch in {"aarch64", "arm64"}:
         arch = "arm64"
     return os_name, arch
+
+
+def _canonical_json_bytes(obj: Any) -> bytes:
+    return json.dumps(obj, separators=(",", ":"), sort_keys=True, ensure_ascii=False).encode("utf-8")
+
+
+def _require_signature() -> bool:
+    # Signature enforcement remains opt-in until signed packs and public keys are
+    # shipped across the supported install path.
+    return os.getenv("UNISON_MODEL_PACK_REQUIRE_SIGNATURE", "false").lower() in {"1", "true", "yes", "on"}
+
+
+def _load_pubkeys(pubkeys_dir: Path) -> dict[str, Ed25519PublicKey]:
+    keys: dict[str, Ed25519PublicKey] = {}
+    if not pubkeys_dir.exists():
+        return keys
+    for p in sorted(pubkeys_dir.glob("*.pub")):
+        try:
+            key = load_pem_public_key(p.read_bytes())
+            if isinstance(key, Ed25519PublicKey):
+                keys[p.stem] = key
+        except Exception:
+            continue
+    return keys
+
+
+def _verify_manifest_signature(*, manifest: Dict[str, Any], signature_obj: Dict[str, Any]) -> None:
+    key_id = str(signature_obj.get("key_id") or "")
+    algorithm = str(signature_obj.get("algorithm") or "")
+    sig_b64 = str(signature_obj.get("signature") or "")
+    if not key_id or not algorithm or not sig_b64:
+        raise ModelPackInvalidError("invalid manifest signature object (missing key_id/algorithm/signature)")
+    if algorithm.lower() != "ed25519":
+        raise ModelPackInvalidError(f"unsupported signature algorithm: {algorithm}")
+    pubkeys_dir = Path(os.getenv("UNISON_MODEL_PACK_PUBKEYS_DIR", "/etc/unison/keys/updates/models")).expanduser().resolve()
+    pubkeys = _load_pubkeys(pubkeys_dir)
+    if not pubkeys:
+        raise ModelPackInvalidError("model pack signature required but no public keys are configured")
+    key = pubkeys.get(key_id)
+    if key is None:
+        raise ModelPackInvalidError(f"unknown model pack signing key_id: {key_id}")
+    try:
+        sig = base64.b64decode(sig_b64)
+        key.verify(sig, _canonical_json_bytes(manifest))
+    except Exception as exc:
+        raise ModelPackInvalidError(f"model pack manifest signature verification failed: {exc}") from exc
 
 
 ModelPackEventSink = Callable[[str, Dict[str, Any], str], None]
@@ -140,8 +190,17 @@ class ModelPackResolver:
         if allow_arch and host_arch not in {str(x).lower() for x in allow_arch}:
             raise ModelPackInvalidError(f"pack incompatible with host arch: {host_arch}")
 
+        pack = manifest.get("pack") if isinstance(manifest.get("pack"), dict) else {}
+        pack_id = str(pack.get("id") or "")
+        pack_version = str(pack.get("version") or "")
+        required_prefix = Path("packs") / pack_id / pack_version if pack_id and pack_version else None
+
         for f in manifest.get("files") or []:
-            _safe_relpath(str(f.get("path")))
+            rel = _safe_relpath(str(f.get("path")))
+            if required_prefix and not str(rel).startswith(str(required_prefix) + os.sep):
+                raise ModelPackInvalidError(
+                    f"pack files must live under {required_prefix}/ for side-by-side installs (got {rel})"
+                )
 
         for m in manifest.get("models") or []:
             _safe_relpath(str(m.get("install_relpath")))
@@ -241,6 +300,17 @@ class ModelPackResolver:
                 raise ModelPackInvalidError(f"invalid manifest json: {exc}") from exc
 
             self._validate_manifest(manifest)
+            if _require_signature():
+                sig_path = unpack_dir / _MANIFEST_SIGNATURE_FILENAME
+                if not sig_path.exists():
+                    raise ModelPackInvalidError(f"missing {_MANIFEST_SIGNATURE_FILENAME} (signature required)")
+                try:
+                    sig_obj = json.loads(sig_path.read_text(encoding="utf-8"))
+                except Exception as exc:
+                    raise ModelPackInvalidError(f"invalid manifest signature json: {exc}") from exc
+                if not isinstance(sig_obj, dict):
+                    raise ModelPackInvalidError("invalid manifest signature (expected object)")
+                _verify_manifest_signature(manifest=manifest, signature_obj=sig_obj)
             pack = manifest.get("pack") if isinstance(manifest.get("pack"), dict) else {}
             ref = PackRef(pack_id=str(pack.get("id")), pack_version=str(pack.get("version")))
             if not ref.pack_id or not ref.pack_version:
