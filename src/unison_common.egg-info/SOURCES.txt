@@ -14,6 +14,7 @@ src/unison_common/consent_rs256.py
 src/unison_common/datetime_utils.py
 src/unison_common/durability.py
 src/unison_common/envelope.py
+src/unison_common/governed_context.py
 src/unison_common/http_client.py
 src/unison_common/http_client_tracing.py
 src/unison_common/idempotency.py
@@ -68,6 +69,7 @@ src/unison_common/prompt/schema.py
 src/unison_common/prompt/store.py
 src/unison_common/prompt/updates.py
 src/unison_common/schemas/__init__.py
+src/unison_common/schemas/governed-context.v2.schema.json
 src/unison_common/schemas/multimodal_manifest.schema.json
 src/unison_common/schemas/modelpack/manifest.v1.schema.json
 src/unison_common/schemas/prompt/__init__.py
@@ -91,6 +93,8 @@ tests/test_contracts_v1.py
 tests/test_envelope.py
 tests/test_envelope_validation.py
 tests/test_event_graph_contract.py
+tests/test_governed_context.py
+tests/test_governed_context_schema.py
 tests/test_http_client_resilience.py
 tests/test_integration_propagation.py
 tests/test_jwks_refresh.py
