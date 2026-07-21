@@ -236,6 +236,23 @@ from .principal_middleware import (
 
 from .trust import CredentialBroker, KeyBroker, LocalDevelopmentKeyBroker, NamespaceSet, read_secret_setting
 
+from .governed_context import (
+    Commitment,
+    CommitmentState,
+    ContextSpace,
+    DeletionState,
+    Goal,
+    MemberRole,
+    MemoryGovernance,
+    MemoryKind,
+    MemoryRecord,
+    PersonalCharter,
+    Relationship,
+    SemanticPrivacyState,
+    SpaceKind,
+    SpaceMembership,
+)
+
 __all__ = [
     "validate_event_envelope",
     "EnvelopeValidationError",
