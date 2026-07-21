@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-unisonos.github.io/schemas/capability-governance.v1.schema.json",
+  "type": "object",
+  "required": ["governance_version", "governance"],
+  "properties": {"governance_version": {"const": "unison.capability-governance.v1"}, "governance": {"type": "object", "required": ["actions", "data_read", "data_write", "recipient_classes", "execution_location", "risk", "reversible", "cost_ceiling", "confirmation", "accessibility", "audit", "retention", "egress", "filesystem", "devices", "timeout_seconds", "resource_limits", "signature", "revocation_id"]}}
+}
