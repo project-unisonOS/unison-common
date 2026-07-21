@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://unisonos.ai/schemas/household-coordination.v1.schema.json",
+  "title": "Unison household coordination request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "household_id", "space_id", "action", "purpose"],
+  "properties": {
+    "version": {"const": "4.0"},
+    "household_id": {"type": "string", "minLength": 1},
+    "space_id": {"type": "string", "minLength": 1},
+    "action": {"enum": ["create", "update", "delete", "list"]},
+    "purpose": {"type": "string", "minLength": 1, "maxLength": 160},
+    "artifact_id": {"type": ["string", "null"]},
+    "artifact_kind": {"enum": ["calendar_event", "grocery_item", null]},
+    "calendar": {"type": ["object", "null"]},
+    "grocery": {"type": ["object", "null"]}
+  }
+}

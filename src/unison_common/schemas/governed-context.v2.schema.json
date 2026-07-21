@@ -24,6 +24,7 @@
         "kind": {"enum": ["private", "shared", "system", "ephemeral"]},
         "owner_person_id": {"$ref": "#/$defs/identifier"},
         "assistant_instance_id": {"type": ["string", "null"]},
+        "household_id": {"type": ["string", "null"]},
         "name": {"$ref": "#/$defs/identifier"},
         "purpose": {"$ref": "#/$defs/identifier"},
         "key_handle": {"$ref": "#/$defs/identifier"},
