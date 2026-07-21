@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Dict, List, Literal
 
 from .errors import PromptUpdateError
 from .json_patch import apply_patch

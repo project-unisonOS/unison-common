@@ -3,12 +3,12 @@ from __future__ import annotations
 import json
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Literal, cast
 from urllib.parse import parse_qs, urlparse
 
 from .engine import PromptEngine
 from .errors import PromptEngineError
-from .updates import PromptUpdateProposal, Risk, Target
+from .updates import PromptUpdateProposal
 
 
 def run_server(engine: PromptEngine, *, host: str, port: int) -> None:
@@ -54,7 +54,8 @@ def _make_handler(engine: PromptEngine):
                 if risk not in ("low", "medium", "high"):
                     self._json({"ok": False, "error": "risk must be low|medium|high"}, status=400)
                     return
-                proposal = engine.propose_update(target=target, ops=ops, rationale=rationale, risk=risk)
+                typed_risk = cast(Literal["low", "medium", "high"], risk)
+                proposal = engine.propose_update(target=target, ops=ops, rationale=rationale, risk=typed_risk)
                 proposals[proposal.proposal_id] = proposal
                 self._json(
                     {
@@ -72,12 +73,12 @@ def _make_handler(engine: PromptEngine):
                 if not isinstance(proposal_id, str) or not proposal_id:
                     self._json({"ok": False, "error": "proposal_id required"}, status=400)
                     return
-                proposal = proposals.get(proposal_id)
-                if proposal is None:
+                selected_proposal = proposals.get(proposal_id)
+                if selected_proposal is None:
                     self._json({"ok": False, "error": "unknown proposal_id"}, status=404)
                     return
                 try:
-                    result = engine.apply_update(proposal, approved=bool(approved))
+                    result = engine.apply_update(selected_proposal, approved=bool(approved))
                 except PromptEngineError as exc:
                     self._json({"ok": False, "error": str(exc)}, status=400)
                     return
@@ -123,4 +124,3 @@ def _make_handler(engine: PromptEngine):
             return
 
     return Handler
-

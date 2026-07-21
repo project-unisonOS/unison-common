@@ -4,10 +4,9 @@ Emits minimal structured logs and redacts sensitive headers.
 """
 from __future__ import annotations
 
-import json
 import logging
 from datetime import datetime
-from typing import Iterable, Mapping
+from typing import Mapping
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request

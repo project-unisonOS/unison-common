@@ -6,7 +6,7 @@ import tarfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from .errors import PromptUpdateError
 from .layout import PromptLayout
@@ -102,7 +102,7 @@ class PromptStore:
                 _rmtree(tmp_root)
             tmp_root.mkdir(parents=True, exist_ok=True)
             with tarfile.open(snapshot_path, "r") as tf:
-                tf.extractall(tmp_root)
+                tf.extractall(tmp_root, filter="data")
             extracted = tmp_root / "prompt"
             if not extracted.exists():
                 raise PromptUpdateError("snapshot missing prompt root")
@@ -142,4 +142,3 @@ def _rmtree(path: Path) -> None:
     for child in sorted([p for p in path.rglob("*") if p.is_dir()], reverse=True):
         child.rmdir()
     path.rmdir()
-

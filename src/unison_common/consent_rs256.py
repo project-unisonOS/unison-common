@@ -11,9 +11,10 @@ import logging
 from typing import Dict, Any, List, Optional, Set
 from datetime import datetime, timedelta
 from fastapi import HTTPException, status
-from jose import JWTError
+from jwt import PyJWTError as JWTError
 
 from .auth_rs256 import JWKSClient
+from .datetime_utils import now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -166,7 +167,7 @@ class ConsentVerifier:
     
     def _verify_jwt_signature(self, token: str) -> Dict[str, Any]:
         """Verify JWT signature using JWKS"""
-        from jose import jwt
+        import jwt
         
         # Get kid from token header
         unverified_header = jwt.get_unverified_header(token)
@@ -268,6 +269,7 @@ def get_consent_verifier() -> ConsentVerifier:
     if _verifier is None:
         # Auto-initialize with defaults
         initialize_consent_verifier()
+    assert _verifier is not None
     return _verifier
 
 
@@ -317,4 +319,3 @@ async def check_consent_header(
     
     # Verify the consent grant
     return await verify_consent_grant(consent_token, required_scopes)
-from .datetime_utils import now_utc

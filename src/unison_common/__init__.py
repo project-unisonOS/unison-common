@@ -22,8 +22,8 @@ from .schema_validation import (
     SchemaValidationError,
 )
 
-from .auth import (
-    verify_token,
+from .auth import (  # noqa: F401
+    verify_token as verify_token_legacy,
     verify_service_token,
     require_roles,
     require_role,
@@ -119,7 +119,7 @@ from .monitoring import (
 )
 
 # Orchestration framework (v1) contracts + local trace artifacts (Phase 0/1).
-from .contracts.v1 import (  # noqa: E402
+from .contracts.v1 import (  # noqa: E402,F401
     InputEventEnvelope,
     IntentSession,
     Intent,
@@ -150,7 +150,7 @@ from .contracts.v1 import (  # noqa: E402
     EventGraphEvent,
     EventGraphQuery,
 )
-from .trace_artifacts import TraceRecorder, TraceSpanStatus  # noqa: E402
+from .trace_artifacts import TraceRecorder, TraceSpanStatus  # noqa: E402,F401
 from .phase1_trace import Phase1NdjsonTrace, sha256_text  # noqa: E402
 
 

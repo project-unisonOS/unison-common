@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import Any, Dict, List
 
 try:
-    import jsonschema
     from jsonschema import Draft7Validator
 
     _JSONSCHEMA_AVAILABLE = True

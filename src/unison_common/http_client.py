@@ -10,21 +10,13 @@ JsonDict = dict
 
 logger = logging.getLogger(__name__)
 
-# Import tracing functions with fallback for when not available
+# Import tracing as a module so the optional fallback has one stable type.
 try:
-    from .tracing import get_tracer, trace_http_request, trace_service_call
-    TRACING_AVAILABLE = True
+    from . import tracing as _tracing
 except ImportError:
-    TRACING_AVAILABLE = False
-    
-    def get_tracer():
-        return None
-    
-    def trace_http_request(*args, **kwargs):
-        pass
-    
-    def trace_service_call(*args, **kwargs):
-        pass
+    _tracing = None  # type: ignore[assignment]
+
+TRACING_AVAILABLE = _tracing is not None
 
 
 _CLIENT_POOL: dict[tuple[str, float], httpx.Client] = {}
@@ -65,7 +57,8 @@ def _inject_tracing_headers(headers: Optional[Dict[str, str]] = None) -> Dict[st
     headers = {k: str(v) for k, v in headers.items() if v is not None}
     
     if TRACING_AVAILABLE:
-        tracer = get_tracer()
+        assert _tracing is not None
+        tracer = _tracing.get_tracer()
         if tracer:
             injected = tracer.inject_headers(headers)
             if isinstance(injected, dict):
@@ -87,7 +80,7 @@ def _request_with_retry(
     max_delay: float = 2.0,
     timeout: float = 2.0,
     retry_on_status: Tuple[int, ...] = (500, 502, 503, 504),
-    retry_on_exceptions: Tuple[type, ...] = (httpx.ConnectError, httpx.ReadTimeout, httpx.RemoteProtocolError),
+    retry_on_exceptions: Tuple[type[BaseException], ...] = (httpx.ConnectError, httpx.ReadTimeout, httpx.RemoteProtocolError),
 ) -> Tuple[bool, int, Optional[JsonDict]]:
     url = f"http://{host}:{port}{path}"
     base_url = f"http://{host}:{port}"
@@ -136,14 +129,15 @@ def _request_with_retry(
             
             # Trace the HTTP request
             if TRACING_AVAILABLE:
-                trace_http_request(method, url, r.status_code, request_duration, headers)
+                assert _tracing is not None
+                _tracing.trace_http_request(method, url, r.status_code, request_duration, headers)
                 
                 # Trace service call
                 service_name = f"{host}:{port}"
                 operation = f"{method} {path}"
                 success = 200 <= r.status_code < 300
                 error = None if success else f"HTTP {r.status_code}"
-                trace_service_call(service_name, operation, request_duration, success, error)
+                _tracing.trace_service_call(service_name, operation, request_duration, success, error)
             
             if 200 <= r.status_code < 300:
                 total_duration = (time.time() - start_time) * 1000
@@ -159,8 +153,9 @@ def _request_with_retry(
             
             # Trace failed request
             if TRACING_AVAILABLE:
-                trace_http_request(method, url, 0, request_duration, headers)
-                trace_service_call(f"{host}:{port}", f"{method} {path}", request_duration, False, str(e))
+                assert _tracing is not None
+                _tracing.trace_http_request(method, url, 0, request_duration, headers)
+                _tracing.trace_service_call(f"{host}:{port}", f"{method} {path}", request_duration, False, str(e))
         except Exception as e:
             # Non-retryable exception
             logger.error(f"HTTP {method} {url} non-retryable error: {e}")

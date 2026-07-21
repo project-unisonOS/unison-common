@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Mapping, MutableMapping
+from typing import Any, Mapping
 
 import os
 
@@ -213,6 +213,7 @@ def principal_context_from_claims(
         raise ValueError("principal claims are expired or missing token times")
 
     raw_audience = claims.get("aud") or claims.get("audience") or ()
+    audience: tuple[str, ...]
     if isinstance(raw_audience, str):
         audience = (raw_audience,)
     else:
@@ -227,7 +228,7 @@ def principal_context_from_claims(
 
     return PrincipalContext(
         principal_id=str(claims.get("principal_id") or claims.get("sub") or ""),
-        principal_kind=claims.get("principal_kind") or "person",
+        principal_kind=PrincipalKind(str(claims.get("principal_kind") or "person")),
         person_id=claims.get("person_id"),
         assistant_instance_id=claims.get("assistant_instance_id"),
         household_id=claims.get("household_id"),
@@ -240,7 +241,7 @@ def principal_context_from_claims(
         scopes=tuple(str(item) for item in raw_scopes),
         audience=audience,
         auth_method=str(claims.get("auth_method") or "unknown"),
-        assurance=claims.get("assurance") or "low",
+        assurance=AssuranceLevel(str(claims.get("assurance") or "low")),
         session_id=claims.get("session_id"),
         delegation_id=claims.get("delegation_id"),
         delegated_by=claims.get("delegated_by"),
@@ -264,6 +265,8 @@ def require_principal_context(expected_audience: str | None = None):
         credentials: HTTPAuthorizationCredentials | None = Depends(security),
     ) -> PrincipalContext:
         try:
+            if credentials is None:
+                raise ValueError("bearer credentials are required")
             claims = await verify_token(credentials)
             require_introspection = os.getenv(
                 "UNISON_PRINCIPAL_INTROSPECTION_REQUIRED", "true"

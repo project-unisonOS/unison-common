@@ -5,17 +5,12 @@ This module provides FastAPI endpoints for event replay functionality,
 including replay history, session management, and trace operations.
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 from fastapi import HTTPException, Depends, Query
-from fastapi.responses import JSONResponse
 import logging
 
 from .replay_store import (
-    ReplayManager,
-    ReplaySession,
-    get_replay_manager,
-    initialize_replay,
-    ReplayConfig
+    get_replay_manager
 )
 from .auth import verify_token, require_admin
 
@@ -46,7 +41,8 @@ async def replay_trace_by_id(
     
     try:
         # Start replay session
-        session = replay_manager.replay_trace(trace_id.strip(), current_user.get("username"))
+        created_by = str(current_user.get("username") or "unknown")
+        session = replay_manager.replay_trace(trace_id.strip(), created_by)
         
         return {
             "session_id": session.session_id,

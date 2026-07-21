@@ -6,14 +6,12 @@ complementing the existing programmatic validation with standardized schema vali
 """
 
 import json
-import os
 from typing import Any, Dict, List, Optional
 from pathlib import Path
 import importlib.resources as ilr
 import logging
 
 try:
-    import jsonschema
     from jsonschema import Draft7Validator, ValidationError, SchemaError
     JSONSCHEMA_AVAILABLE = True
 except ImportError:
@@ -275,7 +273,7 @@ class EnvelopeSchemaValidator:
                     if 'enum' in prop_schema:
                         doc += f"**Allowed values:** {', '.join(f'`{v}`' for v in prop_schema['enum'])}\n\n"
                     if 'minLength' in prop_schema or 'maxLength' in prop_schema:
-                        doc += f"**Length:** "
+                        doc += "**Length:** "
                         if 'minLength' in prop_schema:
                             doc += f"min {prop_schema['minLength']}"
                         if 'maxLength' in prop_schema:

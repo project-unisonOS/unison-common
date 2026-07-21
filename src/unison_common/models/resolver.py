@@ -10,7 +10,7 @@ import tempfile
 import base64
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict
 
 import httpx
 from jsonschema import Draft202012Validator
@@ -181,7 +181,8 @@ class ModelPackResolver:
             msg = "; ".join(["/".join([str(p) for p in e.path]) + ": " + e.message for e in errors[:8]])
             raise ModelPackInvalidError(f"manifest schema validation failed: {msg}")
 
-        compat = manifest.get("compat") if isinstance(manifest.get("compat"), dict) else {}
+        compat_value = manifest.get("compat")
+        compat: Dict[str, Any] = compat_value if isinstance(compat_value, dict) else {}
         allow_os = compat.get("os") if isinstance(compat.get("os"), list) else []
         allow_arch = compat.get("arch") if isinstance(compat.get("arch"), list) else []
         host_os, host_arch = _host_compat()
@@ -190,7 +191,8 @@ class ModelPackResolver:
         if allow_arch and host_arch not in {str(x).lower() for x in allow_arch}:
             raise ModelPackInvalidError(f"pack incompatible with host arch: {host_arch}")
 
-        pack = manifest.get("pack") if isinstance(manifest.get("pack"), dict) else {}
+        pack_value = manifest.get("pack")
+        pack: Dict[str, Any] = pack_value if isinstance(pack_value, dict) else {}
         pack_id = str(pack.get("id") or "")
         pack_version = str(pack.get("version") or "")
         required_prefix = Path("packs") / pack_id / pack_version if pack_id and pack_version else None
@@ -287,7 +289,7 @@ class ModelPackResolver:
                             member_path = (unpack_dir / member.name).resolve()
                             if not str(member_path).startswith(str(base)):
                                 raise ModelPackInvalidError(f"unsafe path in tar member: {member.name}")
-                        tf.extractall(unpack_dir)
+                        tf.extractall(unpack_dir, filter="data")
                 else:
                     raise ModelPackInvalidError("unsupported pack format (expected directory or .tar.gz/.tgz)")
 

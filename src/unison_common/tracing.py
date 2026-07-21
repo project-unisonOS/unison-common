@@ -2,17 +2,19 @@
 Distributed tracing and correlation utilities for Unison platform
 """
 
+from __future__ import annotations
+
 import uuid
 import time
 import logging
 import os
 import inspect
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 from contextlib import contextmanager
 from functools import wraps
 import httpx
 
-from opentelemetry import trace, context, baggage
+from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode, SpanKind
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
@@ -69,8 +71,8 @@ class TracingConfig:
 class TraceContext:
     """Trace context for correlation and distributed tracing"""
     
-    def __init__(self, trace_id: str = None, span_id: str = None, 
-                 parent_span_id: str = None, baggage: Dict[str, Any] = None):
+    def __init__(self, trace_id: Optional[str] = None, span_id: Optional[str] = None,
+                 parent_span_id: Optional[str] = None, baggage: Optional[Dict[str, Any]] = None):
         self.trace_id = trace_id or str(uuid.uuid4())
         self.span_id = span_id or str(uuid.uuid4())[:16]
         self.parent_span_id = parent_span_id
@@ -145,9 +147,9 @@ class TraceContext:
 class DistributedTracer:
     """Main distributed tracing class"""
     
-    def __init__(self, config: TracingConfig = None):
+    def __init__(self, config: Optional[TracingConfig] = None):
         self.config = config or TracingConfig()
-        self._tracer = None
+        self._tracer: Optional[trace.Tracer] = None
         self._initialized = False
         
         if self.config.enabled:
@@ -221,17 +223,18 @@ class DistributedTracer:
             logger.error(f"Failed to initialize OpenTelemetry tracing: {e}")
             self.config.enabled = False
     
-    def create_trace_context(self, headers: Dict[str, str] = None) -> TraceContext:
+    def create_trace_context(self, headers: Optional[Dict[str, str]] = None) -> TraceContext:
         """Create or extract trace context"""
         if headers:
             return TraceContext.from_headers(headers)
         return TraceContext()
     
-    def start_span(self, name: str, kind: SpanKind = SpanKind.INTERNAL, attributes: Dict[str, Any] = None) -> trace.Span:
+    def start_span(self, name: str, kind: SpanKind = SpanKind.INTERNAL, attributes: Optional[Dict[str, Any]] = None) -> trace.Span | NoOpSpan:
         """Start a new span"""
         if not self._initialized:
             return NoOpSpan()
-        
+        if self._tracer is None:
+            raise RuntimeError("tracing is initialized without a tracer")
         return self._tracer.start_span(
             name=name,
             kind=kind,
@@ -239,7 +242,7 @@ class DistributedTracer:
         )
     
     @contextmanager
-    def span(self, name: str, kind: SpanKind = SpanKind.INTERNAL, attributes: Dict[str, Any] = None):
+    def span(self, name: str, kind: SpanKind = SpanKind.INTERNAL, attributes: Optional[Dict[str, Any]] = None):
         """Context manager for spans"""
         span = self.start_span(name, kind, attributes)
         try:
@@ -252,7 +255,7 @@ class DistributedTracer:
         finally:
             span.end()
     
-    def inject_headers(self, headers: Dict[str, str] = None) -> Dict[str, str]:
+    def inject_headers(self, headers: Optional[Dict[str, str]] = None) -> Dict[str, str]:
         """Inject trace context into headers"""
         carrier = dict(headers) if headers else {}
         incoming_request_id = carrier.get("x-request-id") or carrier.get("X-Request-Id")
@@ -265,7 +268,6 @@ class DistributedTracer:
 
         current_span = trace.get_current_span()
         span_ctx = current_span.get_span_context() if current_span else None
-        span_ctx_valid = bool(span_ctx and getattr(span_ctx, "is_valid", False))
 
         # Ensure traceparent is always present for downstream services
         if "traceparent" not in carrier:
@@ -280,7 +282,7 @@ class DistributedTracer:
         carrier.setdefault("X-Trace-Id", request_id)
 
         # Keep span id aligned with current span if available
-        if span_ctx_valid:
+        if span_ctx is not None and span_ctx.is_valid:
             carrier.setdefault("X-Span-Id", format(span_ctx.span_id, "016x"))
         else:
             carrier.setdefault("X-Span-Id", trace_context_obj.span_id)
@@ -293,7 +295,7 @@ class DistributedTracer:
             return self.create_trace_context(headers)
         
         # Extract OpenTelemetry context
-        ctx = extract(headers)
+        extract(headers)
         
         # Create our trace context
         return self.create_trace_context(headers)
@@ -320,7 +322,7 @@ class NoOpSpan:
         pass
 
 # Global tracer instance
-_tracer = None
+_tracer: Optional[DistributedTracer] = None
 
 def get_tracer() -> DistributedTracer:
     """Get global tracer instance"""
@@ -329,7 +331,7 @@ def get_tracer() -> DistributedTracer:
         _tracer = DistributedTracer()
     return _tracer
 
-def initialize_tracing(config: TracingConfig = None):
+def initialize_tracing(config: Optional[TracingConfig] = None):
     """Initialize global tracing"""
     global _tracer
     _tracer = DistributedTracer(config)
@@ -352,7 +354,7 @@ def instrument_httpx():
 
     HTTPXClientInstrumentor().instrument()
 
-def trace_span(name: str = None, kind: SpanKind = SpanKind.INTERNAL):
+def trace_span(name: Optional[str] = None, kind: SpanKind = SpanKind.INTERNAL):
     """Decorator for tracing functions"""
     def decorator(func):
         @wraps(func)
@@ -370,7 +372,7 @@ def trace_span(name: str = None, kind: SpanKind = SpanKind.INTERNAL):
         return wrapper
     return decorator
 
-def trace_async_span(name: str = None, kind: SpanKind = SpanKind.INTERNAL):
+def trace_async_span(name: Optional[str] = None, kind: SpanKind = SpanKind.INTERNAL):
     """Decorator for tracing async functions"""
     def decorator(func):
         @wraps(func)
@@ -395,20 +397,20 @@ def add_span_attributes(attributes: Dict[str, Any]):
         for key, value in attributes.items():
             span.set_attribute(key, value)
 
-def add_span_event(name: str, attributes: Dict[str, Any] = None):
+def add_span_event(name: str, attributes: Optional[Dict[str, Any]] = None):
     """Add event to current span"""
     span = trace.get_current_span()
     if span and span.is_recording():
         span.add_event(name, attributes or {})
 
-def set_span_error(error: Exception, message: str = None):
+def set_span_error(error: Exception, message: Optional[str] = None):
     """Set current span as error"""
     span = trace.get_current_span()
     if span and span.is_recording():
         span.set_status(Status(StatusCode.ERROR, message or str(error)))
         span.record_exception(error)
 
-def set_span_ok(message: str = None):
+def set_span_ok(message: Optional[str] = None):
     """Set current span as OK"""
     span = trace.get_current_span()
     if span and span.is_recording():
@@ -463,7 +465,7 @@ def get_trace_context(request) -> TraceContext:
 
 # Utility functions for common tracing patterns
 def trace_http_request(method: str, url: str, status_code: int, 
-                      duration_ms: float, headers: Dict[str, str] = None):
+                      duration_ms: float, headers: Optional[Dict[str, str]] = None):
     """Trace HTTP request"""
     attributes = {
         "http.method": method,
@@ -481,7 +483,7 @@ def trace_http_request(method: str, url: str, status_code: int,
 
 def trace_service_call(service_name: str, operation: str, 
                       duration_ms: float, success: bool = True,
-                      error: str = None):
+                      error: Optional[str] = None):
     """Trace service call"""
     attributes = {
         "service.name": service_name,
@@ -497,7 +499,7 @@ def trace_service_call(service_name: str, operation: str,
 
 def trace_database_operation(query_type: str, table: str, 
                            duration_ms: float, success: bool = True,
-                           error: str = None):
+                           error: Optional[str] = None):
     """Trace database operation"""
     attributes = {
         "db.type": "redis",

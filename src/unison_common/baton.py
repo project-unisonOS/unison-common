@@ -13,7 +13,6 @@ from __future__ import annotations
 import base64
 import json
 import os
-import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -103,7 +102,8 @@ class BatonKeyStore:
     """File-based Ed25519 key store."""
 
     def __init__(self, path: Optional[Path] = None) -> None:
-        default_path = Path(os.getenv("BATON_KEY_PATH", "/tmp/unison_baton_ed25519.pem"))
+        state_root = Path(os.getenv("XDG_STATE_HOME", Path.home() / ".local" / "state"))
+        default_path = Path(os.getenv("BATON_KEY_PATH", state_root / "unison" / "baton_ed25519.pem"))
         self.path = path or default_path
         self._priv: Optional[Ed25519PrivateKey] = None
         self._pub: Optional[Ed25519PublicKey] = None
@@ -112,8 +112,11 @@ class BatonKeyStore:
     def _load_or_create(self) -> None:
         if self.path.exists():
             data = self.path.read_bytes()
-            self._priv = serialization.load_pem_private_key(data, password=None)
-            self._pub = self._priv.public_key()
+            loaded_key = serialization.load_pem_private_key(data, password=None)
+            if not isinstance(loaded_key, Ed25519PrivateKey):
+                raise BatonError("baton key is not an Ed25519 private key")
+            self._priv = loaded_key
+            self._pub = loaded_key.public_key()
             return
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._priv = Ed25519PrivateKey.generate()

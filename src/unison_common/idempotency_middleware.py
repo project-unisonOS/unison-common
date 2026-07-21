@@ -11,12 +11,10 @@ from typing import Dict, Any, Optional, Callable
 from fastapi import Request, Response, HTTPException
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response as StarletteResponse
 import logging
 
 from .idempotency import (
     IdempotencyManager,
-    IdempotencyRecord,
     get_idempotency_manager,
     extract_idempotency_key,
     validate_idempotency_key
