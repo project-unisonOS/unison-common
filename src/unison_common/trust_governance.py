@@ -63,6 +63,7 @@ class TrustRequest:
     provenance: tuple[str, ...] = ()
     untrusted_input: bool = False
     estimated_cost: str | None = None
+    risk_level: str = "low"
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any]) -> "TrustRequest":
@@ -92,6 +93,7 @@ class TrustRequest:
             provenance=tuple(str(v) for v in value.get("provenance", ())),
             untrusted_input=bool(value.get("untrusted_input", False)),
             estimated_cost=value.get("estimated_cost"),
+            risk_level=str(value.get("risk_level", "low")),
         )
 
 

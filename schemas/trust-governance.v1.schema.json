@@ -20,7 +20,7 @@
         "data_classes": {"$ref": "#/$defs/nonEmptyStrings"}, "action": {"type": "string", "minLength": 1},
         "channel": {"type": "string"}, "recipient_ids": {"type": "array", "items": {"type": "string"}},
         "requested_fields": {"type": "array", "items": {"type": "string"}}, "capability_id": {"type": ["string", "null"]},
-        "relationship": {"type": ["string", "null"]}, "provenance": {"type": "array", "items": {"type": "string"}},
+        "relationship": {"type": ["string", "null"]}, "risk_level": {"enum": ["low", "medium", "high", "critical"]}, "provenance": {"type": "array", "items": {"type": "string"}},
         "untrusted_input": {"type": "boolean"}, "estimated_cost": {"type": ["string", "null"]}
       }
     },
