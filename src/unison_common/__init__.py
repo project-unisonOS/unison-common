@@ -213,6 +213,29 @@ from .datetime_utils import (
     isoformat_utc,
 )
 
+from .principal import (
+    AssuranceLevel,
+    PrincipalContext,
+    PrincipalKind,
+    TrustedRequestEnvelope,
+    assert_identity_hints,
+    bind_identity,
+    partition_key,
+    principal_context_from_claims,
+    redact_principal_for_log,
+    require_principal_context,
+)
+
+from .principal_middleware import (
+    DEFAULT_PUBLIC_PATHS,
+    PrincipalBindingMiddleware,
+    get_bound_principal,
+    get_current_principal,
+    get_current_principal_token,
+)
+
+from .trust import CredentialBroker, KeyBroker, LocalDevelopmentKeyBroker, NamespaceSet, read_secret_setting
+
 __all__ = [
     "validate_event_envelope",
     "EnvelopeValidationError",
@@ -335,4 +358,24 @@ __all__ = [
     "isoformat_utc",
     "Phase1NdjsonTrace",
     "sha256_text",
+    "AssuranceLevel",
+    "PrincipalContext",
+    "PrincipalKind",
+    "TrustedRequestEnvelope",
+    "assert_identity_hints",
+    "bind_identity",
+    "partition_key",
+    "principal_context_from_claims",
+    "redact_principal_for_log",
+    "require_principal_context",
+    "DEFAULT_PUBLIC_PATHS",
+    "PrincipalBindingMiddleware",
+    "get_bound_principal",
+    "get_current_principal",
+    "get_current_principal_token",
+    "CredentialBroker",
+    "KeyBroker",
+    "LocalDevelopmentKeyBroker",
+    "NamespaceSet",
+    "read_secret_setting",
 ]

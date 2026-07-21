@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.unisonos.org/trusted-request-envelope.v1.schema.json",
+  "title": "TrustedRequestEnvelope v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "request_id", "trace_id", "principal", "purpose", "payload"],
+  "properties": {
+    "version": {"const": "1.0"},
+    "request_id": {"type": "string", "minLength": 1},
+    "trace_id": {"type": "string", "minLength": 1},
+    "principal": {"$ref": "principal-context.v1.schema.json"},
+    "purpose": {"type": "string", "minLength": 1},
+    "audience": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "data_classes": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "requested_capability": {"type": ["string", "null"]},
+    "risk": {"enum": ["low", "normal", "elevated", "high"]},
+    "confirmation_id": {"type": ["string", "null"]},
+    "payload": {"type": "object"}
+  }
+}

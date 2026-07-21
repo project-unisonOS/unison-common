@@ -189,6 +189,8 @@ async def verify_rs256_token_locally(token: str) -> Dict[str, Any]:
             decode_kwargs["issuer"] = EXPECTED_ISSUER
         if EXPECTED_AUDIENCE:
             decode_kwargs["audience"] = EXPECTED_AUDIENCE
+        else:
+            decode_kwargs["options"] = {"verify_aud": False}
 
         payload = jwt.decode(token, public_key_pem, **decode_kwargs)
         
@@ -245,12 +247,13 @@ async def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Dep
         if not payload.get("sub"):
             raise AuthError("Token missing subject claim")
         
-        return {
-            "username": payload.get("sub"),
-            "roles": payload.get("roles", []),
-            "token_type": payload.get("type"),
-            "exp": payload.get("exp")
-        }
+        # Preserve the complete set of cryptographically verified authority
+        # claims.  Downstream services must derive PrincipalContext from these
+        # claims rather than from request bodies or path parameters.
+        verified = dict(payload)
+        verified["username"] = payload.get("login_handle") or payload.get("sub")
+        verified["token_type"] = payload.get("type")
+        return verified
         
     except AuthError:
         # Backward-compatible fallback (explicitly gated): accept legacy HS256 *service* tokens.
@@ -268,12 +271,11 @@ async def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Dep
                 exp = int(payload.get("exp") or 0)
                 if exp and exp <= int(time.time()):
                     raise AuthError("Token expired")
-                return {
-                    "username": payload.get("sub"),
-                    "roles": payload.get("roles", []),
-                    "token_type": payload.get("type"),
-                    "exp": exp or None,
-                }
+                verified = dict(payload)
+                verified["username"] = payload.get("sub")
+                verified["token_type"] = payload.get("type")
+                verified["exp"] = exp or None
+                return verified
             except Exception:
                 pass
         # Fallback to auth service verification for compatibility
@@ -287,12 +289,10 @@ async def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Dep
                 headers={"WWW-Authenticate": "Bearer"}
             )
         
-        return {
-            "username": token_data.get("username"),
-            "roles": token_data.get("roles", []),
-            "token_type": token_data.get("type"),
-            "exp": token_data.get("exp")
-        }
+        verified = dict(token_data.get("claims") or token_data)
+        verified["username"] = token_data.get("login_handle") or token_data.get("username") or verified.get("sub")
+        verified["token_type"] = verified.get("type")
+        return verified
 
 async def verify_service_token(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Dict[str, Any]:
     """Verify service token for inter-service communication"""

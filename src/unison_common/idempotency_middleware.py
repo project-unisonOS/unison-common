@@ -77,7 +77,10 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         
         # Get user info from request state (if available from auth)
         user_id = None
-        if hasattr(request.state, 'user') and request.state.user:
+        principal = getattr(request.state, "principal_context", None)
+        if principal is not None:
+            user_id = principal.person_id or principal.principal_id
+        elif hasattr(request.state, 'user') and request.state.user:
             user_id = request.state.user.get('username')
         
         # Check if this is a duplicate request
