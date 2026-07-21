@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-unisonos.github.io/schemas/trust-governance.v1.schema.json",
+  "title": "Unison trust governance contracts",
+  "type": "object",
+  "oneOf": [
+    {"$ref": "#/$defs/trustRequest"},
+    {"$ref": "#/$defs/disclosureDecision"},
+    {"$ref": "#/$defs/capabilityGrant"}
+  ],
+  "$defs": {
+    "nonEmptyStrings": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "trustRequest": {
+      "type": "object", "additionalProperties": false,
+      "required": ["principal_id", "assistant_id", "purpose", "audience", "space_id", "assurance", "data_classes", "action"],
+      "properties": {
+        "principal_id": {"type": "string", "minLength": 1}, "assistant_id": {"type": "string", "minLength": 1},
+        "purpose": {"type": "string", "minLength": 1}, "audience": {"$ref": "#/$defs/nonEmptyStrings"},
+        "space_id": {"type": "string", "minLength": 1}, "assurance": {"enum": ["local-unlocked", "remote-authenticated", "strong", "hardware"]},
+        "data_classes": {"$ref": "#/$defs/nonEmptyStrings"}, "action": {"type": "string", "minLength": 1},
+        "channel": {"type": "string"}, "recipient_ids": {"type": "array", "items": {"type": "string"}},
+        "requested_fields": {"type": "array", "items": {"type": "string"}}, "capability_id": {"type": ["string", "null"]},
+        "relationship": {"type": ["string", "null"]}, "provenance": {"type": "array", "items": {"type": "string"}},
+        "untrusted_input": {"type": "boolean"}, "estimated_cost": {"type": ["string", "null"]}
+      }
+    },
+    "disclosureDecision": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "request_id", "outcome", "reason_code", "explanation", "consequence", "reversible", "created_at"],
+      "properties": {
+        "contract_version": {"const": "unison.trust.v1"}, "request_id": {"type": "string"},
+        "outcome": {"enum": ["allow", "deny", "redact", "minimize", "ask", "step-up"]},
+        "reason_code": {"type": "string"}, "explanation": {"type": "string"}, "consequence": {"type": "string"},
+        "reversible": {"type": "boolean"}, "disclosed_fields": {"type": "array", "items": {"type": "string"}},
+        "redacted_fields": {"type": "array", "items": {"type": "string"}}, "confirmation_id": {"type": ["string", "null"]},
+        "required_assurance": {"type": ["string", "null"]}, "alternatives": {"type": "array", "items": {"type": "string"}},
+        "expires_at": {"type": ["string", "null"]}, "created_at": {"type": "string"}
+      }
+    },
+    "capabilityGrant": {
+      "type": "object", "additionalProperties": true,
+      "required": ["contract_version", "grant_id", "principal_id", "assistant_id", "capability_id", "actions", "purposes", "audiences", "data_classes", "space_ids"],
+      "properties": {"contract_version": {"const": "unison.trust.v1"}, "grant_id": {"type": "string"}, "principal_id": {"type": "string"}, "assistant_id": {"type": "string"}, "capability_id": {"type": "string"}, "actions": {"$ref": "#/$defs/nonEmptyStrings"}, "purposes": {"$ref": "#/$defs/nonEmptyStrings"}, "audiences": {"$ref": "#/$defs/nonEmptyStrings"}, "data_classes": {"$ref": "#/$defs/nonEmptyStrings"}, "space_ids": {"$ref": "#/$defs/nonEmptyStrings"}}
+    }
+  }
+}

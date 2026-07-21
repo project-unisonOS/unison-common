@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-unisonos.github.io/schemas/trust-governance.v1.schema.json",
+  "title": "Unison trust governance contracts",
+  "type": "object",
+  "required": ["contract_version"],
+  "properties": {"contract_version": {"const": "unison.trust.v1"}},
+  "oneOf": [
+    {"required": ["request_id", "outcome", "reason_code", "explanation", "consequence", "reversible", "created_at"], "properties": {"outcome": {"enum": ["allow", "deny", "redact", "minimize", "ask", "step-up"]}}},
+    {"required": ["grant_id", "principal_id", "assistant_id", "capability_id", "actions", "purposes", "audiences", "data_classes", "space_ids"]}
+  ]
+}
