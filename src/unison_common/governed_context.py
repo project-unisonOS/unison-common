@@ -62,6 +62,7 @@ class ContextSpace(GovernedModel):
     space_id: str
     kind: SpaceKind
     owner_person_id: str
+    household_id: str | None = None
     assistant_instance_id: str | None = None
     name: str
     purpose: str
@@ -74,6 +75,8 @@ class ContextSpace(GovernedModel):
     def validate_private_owner(self) -> "ContextSpace":
         if self.kind is SpaceKind.PRIVATE and not self.assistant_instance_id:
             raise ValueError("private spaces require an assistant instance")
+        if self.kind is SpaceKind.SHARED and not self.household_id:
+            raise ValueError("shared spaces require a household identifier")
         return self
 
 

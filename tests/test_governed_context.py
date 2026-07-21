@@ -26,6 +26,18 @@ def test_private_space_requires_assistant_instance():
         )
 
 
+def test_shared_space_requires_explicit_household():
+    with pytest.raises(ValidationError):
+        ContextSpace(
+            space_id="shared-one",
+            kind="shared",
+            owner_person_id="alice",
+            name="Household",
+            purpose="coordinate",
+            key_handle="key-one",
+        )
+
+
 def test_inference_requires_uncertainty_and_defaults_private():
     with pytest.raises(ValidationError):
         MemoryRecord(
