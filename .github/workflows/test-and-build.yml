@@ -24,7 +24,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       
       - name: Cache dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
@@ -110,7 +110,7 @@ jobs:
           python -c "import unison_common; print(f'✓ Package version: {unison_common.__version__}')"
       
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dist-packages
           path: dist/
