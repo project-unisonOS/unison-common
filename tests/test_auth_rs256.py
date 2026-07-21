@@ -6,7 +6,8 @@ import pytest
 import time
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch, MagicMock
-from jose import jwt, JWTError
+import jwt
+from jwt import PyJWTError as JWTError
 import httpx
 
 from unison_common.auth_rs256 import (
@@ -221,8 +222,8 @@ class TestRS256TokenVerifier:
         with pytest.raises(JWTError, match="Token missing kid"):
             verifier.verify_token(token)
     
-    @patch('jose.jwt.decode')
-    @patch('jose.jwt.get_unverified_header')
+    @patch('unison_common.auth_rs256.jwt.decode')
+    @patch('unison_common.auth_rs256.jwt.get_unverified_header')
     def test_verify_token_success(self, mock_header, mock_decode, verifier, mock_jwks_client):
         """Test successful token verification"""
         mock_header.return_value = {"kid": "test-key", "alg": "RS256"}
@@ -239,7 +240,7 @@ class TestRS256TokenVerifier:
         assert payload["sub"] == "user123"
         mock_jwks_client.get_signing_key.assert_called_once_with("test-key")
     
-    @patch('jose.jwt.get_unverified_header')
+    @patch('unison_common.auth_rs256.jwt.get_unverified_header')
     def test_verify_token_key_not_found(self, mock_header, verifier, mock_jwks_client):
         """Test verifying token with unknown kid"""
         mock_header.return_value = {"kid": "unknown-key", "alg": "RS256"}

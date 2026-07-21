@@ -37,7 +37,8 @@ def compile_prompt(
     if conflicts:
         raise PromptConflictError("; ".join(conflicts))
 
-    anti = identity.get("anti_sycophancy") if isinstance(identity.get("anti_sycophancy"), dict) else {}
+    anti_value = identity.get("anti_sycophancy")
+    anti: Dict[str, Any] = anti_value if isinstance(anti_value, dict) else {}
     challenge_level = anti.get("challenge_level", 2)
     try:
         challenge_level_int = int(challenge_level)
@@ -45,11 +46,11 @@ def compile_prompt(
         challenge_level_int = 2
     challenge_level_int = max(0, min(3, challenge_level_int))
 
-    clarifying_max = (
-        (identity.get("communication") or {}).get("clarifying_questions_max")
-        if isinstance(identity.get("communication"), dict)
-        else None
+    communication_value = identity.get("communication")
+    communication: Dict[str, Any] = (
+        communication_value if isinstance(communication_value, dict) else {}
     )
+    clarifying_max = communication.get("clarifying_questions_max")
     try:
         clarifying_max_int = int(clarifying_max) if clarifying_max is not None else 1
     except Exception:

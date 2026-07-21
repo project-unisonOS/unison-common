@@ -12,8 +12,7 @@ import time
 import hashlib
 import json
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List
-from pathlib import Path
+from typing import Optional, Dict, Any
 import threading
 
 from .datetime_utils import now_utc, isoformat_utc
@@ -240,11 +239,12 @@ class TTLManager:
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_expires_at ON event_traces(expires_at)")
                 
                 # Set expires_at for existing records
-                cursor.execute(f"""
+                retention_modifier = f"+{int(self.config.TTL_DEFAULT_DAYS)} days"
+                cursor.execute("""
                     UPDATE event_traces 
-                    SET expires_at = datetime(created_at, '+{self.config.TTL_DEFAULT_DAYS} days')
+                    SET expires_at = datetime(created_at, ?)
                     WHERE expires_at IS NULL
-                """)
+                """, (retention_modifier,))
                 
                 conn.commit()
                 logger.info("✅ TTL columns added")
@@ -588,7 +588,7 @@ class PIIScrubber:
             try:
                 dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
                 return dt.strftime('%Y-%m-%d')
-            except:
+            except (TypeError, ValueError):
                 pass
         return "DATE_SCRUBBED"
     

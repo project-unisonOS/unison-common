@@ -6,11 +6,14 @@ by fetching public keys from the auth service's JWKS endpoint.
 """
 
 import logging
-import time
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 from datetime import datetime, timedelta
 import httpx
-from jose import jwt, JWTError
+import jwt
+from cryptography.hazmat.primitives import serialization
+from jwt import PyJWTError as JWTError
+
+from .datetime_utils import now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +43,7 @@ class JWKSClient:
         
         self._jwks: Optional[Dict] = None
         self._jwks_fetched_at: Optional[datetime] = None
-        self._keys_by_kid: Dict[str, str] = {}
+        self._keys_by_kid: Dict[str, Dict[str, Any]] = {}
     
     def _is_cache_valid(self) -> bool:
         """Check if cached JWKS is still valid"""
@@ -62,6 +65,7 @@ class JWKSClient:
         """
         if not force and self._is_cache_valid():
             logger.debug("Using cached JWKS")
+            assert self._jwks is not None
             return self._jwks
         
         logger.info(f"Fetching JWKS from {self.jwks_url}")
@@ -95,7 +99,7 @@ class JWKSClient:
                 return self._jwks
             raise
     
-    def get_public_key(self, kid: str) -> Optional[Dict]:
+    def get_public_key(self, kid: str) -> Optional[Dict[str, Any]]:
         """
         Get public key for a specific kid.
         
@@ -130,11 +134,12 @@ class JWKSClient:
             if jwk is None:
                 raise ValueError(f"Key {kid} not found in JWKS")
         
-        # Convert JWK to PEM using jose
-        from jose.backends.cryptography_backend import CryptographyRSAKey
-        
-        key = CryptographyRSAKey(jwk, "RS256")
-        return key.to_pem().decode('utf-8')
+        # Convert the validated RSA JWK to a cryptography public key.
+        key = jwt.PyJWK.from_dict(jwk, algorithm="RS256").key
+        return key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        ).decode("utf-8")
 
 
 class RS256TokenVerifier:
@@ -291,4 +296,3 @@ def verify_token_safe(token: str) -> Optional[Dict]:
         Decoded payload or None if invalid
     """
     return get_verifier().verify_token_safe(token)
-from .datetime_utils import now_utc

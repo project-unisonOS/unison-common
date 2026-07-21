@@ -6,7 +6,8 @@ import pytest
 import time
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch, AsyncMock
-from jose import jwt, JWTError
+import jwt
+from jwt import PyJWTError as JWTError
 import httpx
 import uuid
 

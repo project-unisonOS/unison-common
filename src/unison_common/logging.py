@@ -2,6 +2,7 @@ import logging
 import json
 from opentelemetry import trace
 import re
+from typing import Any
 
 
 def configure_logging(name: str):
@@ -13,7 +14,7 @@ def configure_logging(name: str):
 
 def _get_trace_fields() -> dict:
     """Extract standard trace fields from current OpenTelemetry span."""
-    fields = {}
+    fields: dict[str, Any] = {}
     try:
         span = trace.get_current_span()
         ctx = span.get_span_context() if span else None

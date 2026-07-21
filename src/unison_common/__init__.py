@@ -22,8 +22,8 @@ from .schema_validation import (
     SchemaValidationError,
 )
 
-from .auth import (
-    verify_token,
+from .auth import (  # noqa: F401
+    verify_token as verify_token_legacy,
     verify_service_token,
     require_roles,
     require_role,
@@ -119,7 +119,7 @@ from .monitoring import (
 )
 
 # Orchestration framework (v1) contracts + local trace artifacts (Phase 0/1).
-from .contracts.v1 import (  # noqa: E402
+from .contracts.v1 import (  # noqa: E402,F401
     InputEventEnvelope,
     IntentSession,
     Intent,
@@ -150,7 +150,7 @@ from .contracts.v1 import (  # noqa: E402
     EventGraphEvent,
     EventGraphQuery,
 )
-from .trace_artifacts import TraceRecorder, TraceSpanStatus  # noqa: E402
+from .trace_artifacts import TraceRecorder, TraceSpanStatus  # noqa: E402,F401
 from .phase1_trace import Phase1NdjsonTrace, sha256_text  # noqa: E402
 
 
@@ -211,6 +211,46 @@ from .multimodal import (
 from .datetime_utils import (
     now_utc,
     isoformat_utc,
+)
+
+from .principal import (
+    AssuranceLevel,
+    PrincipalContext,
+    PrincipalKind,
+    TrustedRequestEnvelope,
+    assert_identity_hints,
+    bind_identity,
+    partition_key,
+    principal_context_from_claims,
+    redact_principal_for_log,
+    require_principal_context,
+)
+
+from .principal_middleware import (
+    DEFAULT_PUBLIC_PATHS,
+    PrincipalBindingMiddleware,
+    get_bound_principal,
+    get_current_principal,
+    get_current_principal_token,
+)
+
+from .trust import CredentialBroker, KeyBroker, LocalDevelopmentKeyBroker, NamespaceSet, read_secret_setting
+
+from .governed_context import (
+    Commitment,
+    CommitmentState,
+    ContextSpace,
+    DeletionState,
+    Goal,
+    MemberRole,
+    MemoryGovernance,
+    MemoryKind,
+    MemoryRecord,
+    PersonalCharter,
+    Relationship,
+    SemanticPrivacyState,
+    SpaceKind,
+    SpaceMembership,
 )
 
 __all__ = [
@@ -335,4 +375,38 @@ __all__ = [
     "isoformat_utc",
     "Phase1NdjsonTrace",
     "sha256_text",
+    "AssuranceLevel",
+    "PrincipalContext",
+    "PrincipalKind",
+    "TrustedRequestEnvelope",
+    "assert_identity_hints",
+    "bind_identity",
+    "partition_key",
+    "principal_context_from_claims",
+    "redact_principal_for_log",
+    "require_principal_context",
+    "DEFAULT_PUBLIC_PATHS",
+    "PrincipalBindingMiddleware",
+    "get_bound_principal",
+    "get_current_principal",
+    "get_current_principal_token",
+    "CredentialBroker",
+    "KeyBroker",
+    "LocalDevelopmentKeyBroker",
+    "NamespaceSet",
+    "read_secret_setting",
+    "Commitment",
+    "CommitmentState",
+    "ContextSpace",
+    "DeletionState",
+    "Goal",
+    "MemberRole",
+    "MemoryGovernance",
+    "MemoryKind",
+    "MemoryRecord",
+    "PersonalCharter",
+    "Relationship",
+    "SemanticPrivacyState",
+    "SpaceKind",
+    "SpaceMembership",
 ]

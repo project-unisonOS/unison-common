@@ -79,14 +79,14 @@ class HTTPConnectionPool:
     def async_client(self) -> httpx.AsyncClient:
         """Get async HTTP client"""
         if self._client is None:
-            self.__init__()
+            raise RuntimeError("HTTP async client was not initialized")
         return self._client
     
     @property
     def sync_client(self) -> httpx.Client:
         """Get sync HTTP client"""
         if self._sync_client is None:
-            self.__init__()
+            raise RuntimeError("HTTP sync client was not initialized")
         return self._sync_client
     
     async def close(self):

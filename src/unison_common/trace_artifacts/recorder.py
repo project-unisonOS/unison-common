@@ -156,5 +156,6 @@ class TraceRecorder:
         return target
 
     def write_default(self, *, directory: Optional[str | Path] = None) -> Path:
-        base = Path(directory or os.getenv("UNISON_TRACE_DIR", "traces"))
+        base_value: str | Path = directory if directory is not None else os.getenv("UNISON_TRACE_DIR", "traces")
+        base = Path(base_value)
         return self.write_json(base / f"{self.trace_id}.json")

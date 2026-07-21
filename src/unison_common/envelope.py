@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 import re
 import json
 import bleach
@@ -72,7 +72,7 @@ def sanitize_dict(d: Dict[str, Any], depth: int = 0) -> Dict[str, Any]:
     if depth > MAX_NESTED_DEPTH:
         raise EnvelopeValidationError("Payload nested too deeply")
     
-    sanitized = {}
+    sanitized: Dict[str, Any] = {}
     for key, value in d.items():
         # Sanitize keys
         if isinstance(key, str):
@@ -102,7 +102,7 @@ def sanitize_list(lst: List[Any], depth: int = 0) -> List[Any]:
     if depth > MAX_NESTED_DEPTH:
         raise EnvelopeValidationError("Payload nested too deeply")
     
-    sanitized = []
+    sanitized: List[Any] = []
     for item in lst:
         if isinstance(item, str):
             sanitized.append(sanitize_string(item))
@@ -190,7 +190,7 @@ def validate_payload(payload: Any) -> Dict[str, Any]:
     
     return sanitized_payload
 
-def validate_auth_scope(auth_scope: Any) -> str:
+def validate_auth_scope(auth_scope: Any) -> Optional[str]:
     """Validate and sanitize auth_scope"""
     if auth_scope is None:
         return None
@@ -206,7 +206,7 @@ def validate_auth_scope(auth_scope: Any) -> str:
     
     return clean_auth_scope
 
-def validate_safety_context(safety_context: Any) -> Dict[str, Any]:
+def validate_safety_context(safety_context: Any) -> Optional[Dict[str, Any]]:
     """Validate and sanitize safety_context"""
     if safety_context is None:
         return None
@@ -264,7 +264,7 @@ def _validate_event_envelope(envelope: Dict[str, Any], allow_unknown: bool = Fal
         raise EnvelopeValidationError(f"Missing required field(s): {', '.join(missing_fields)}")
     
     # Validate and sanitize each field
-    sanitized_envelope = {}
+    sanitized_envelope: Dict[str, Any] = {}
     
     try:
         # Timestamp
@@ -383,7 +383,7 @@ def validate_event_envelope_with_details(envelope: Dict[str, Any],
     Returns:
         Dictionary with validation results including errors if any
     """
-    results = {
+    results: Dict[str, Any] = {
         "valid": False,
         "programmatic_errors": [],
         "schema_errors": [],

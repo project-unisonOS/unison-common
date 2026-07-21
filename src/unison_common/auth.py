@@ -1,11 +1,18 @@
+import asyncio
+import logging
+import os
+import time
+from collections import defaultdict
+from datetime import timedelta
+from typing import Dict, Any, List, Optional
+
+import httpx
 from fastapi import HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import JWTError, jwt
-import os
-import httpx
-import logging
-from typing import Dict, Any, List, Optional
-import time
+import jwt
+from jwt import PyJWTError as JWTError
+
+from .datetime_utils import now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +27,7 @@ CONSENT_AUDIENCE = os.getenv("UNISON_CONSENT_AUDIENCE", "orchestrator")
 # JWKS configuration for RS256 verification
 JWKS_URL = f"{AUTH_SERVICE_URL}/.well-known/jwks.json"
 JWKS_CACHE_TTL_SECONDS = int(os.getenv("UNISON_AUTH_JWKS_CACHE_TTL_SECONDS", "300"))
-_jwks_cache = {"keys": None, "expires": 0, "etag": None}
+_jwks_cache: Dict[str, Any] = {"keys": None, "expires": 0, "etag": None}
 EXPECTED_ISSUER = os.getenv("UNISON_AUTH_ISSUER")  # optional hardening
 EXPECTED_AUDIENCE = os.getenv("UNISON_AUTH_AUDIENCE")  # optional hardening
 JWKS_REFRESH_SECONDS = int(os.getenv("UNISON_AUTH_JWKS_REFRESH_SECONDS", "0"))
@@ -57,7 +64,7 @@ async def get_jwks(force_refresh: bool = False) -> Dict[str, Any]:
         return _jwks_cache["keys"]
 
     try:
-        headers = {}
+        headers: Dict[str, str] = {}
         if _jwks_cache.get("etag") and not force_refresh:
             headers["If-None-Match"] = _jwks_cache["etag"]
 
@@ -118,7 +125,7 @@ def start_jwks_background_refresh():
     _jwks_refresh_thread = threading.Thread(target=_jwks_refresher, daemon=True)
     _jwks_refresh_thread.start()
 
-def find_public_key(kid: str, jwks: Dict[str, Any]) -> Optional[str]:
+def find_public_key(kid: str, jwks: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """Find public key by key ID in JWKS"""
     for key in jwks.get("keys", []):
         if key.get("kid") == kid:
@@ -184,11 +191,13 @@ async def verify_rs256_token_locally(token: str) -> Dict[str, Any]:
         public_key_pem = construct_rsa_public_key(jwk_key)
         
         # Verify token
-        decode_kwargs = {"algorithms": [ALGORITHM]}
+        decode_kwargs: Dict[str, Any] = {"algorithms": [ALGORITHM]}
         if EXPECTED_ISSUER:
             decode_kwargs["issuer"] = EXPECTED_ISSUER
         if EXPECTED_AUDIENCE:
             decode_kwargs["audience"] = EXPECTED_AUDIENCE
+        else:
+            decode_kwargs["options"] = {"verify_aud": False}
 
         payload = jwt.decode(token, public_key_pem, **decode_kwargs)
         
@@ -245,12 +254,13 @@ async def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Dep
         if not payload.get("sub"):
             raise AuthError("Token missing subject claim")
         
-        return {
-            "username": payload.get("sub"),
-            "roles": payload.get("roles", []),
-            "token_type": payload.get("type"),
-            "exp": payload.get("exp")
-        }
+        # Preserve the complete set of cryptographically verified authority
+        # claims.  Downstream services must derive PrincipalContext from these
+        # claims rather than from request bodies or path parameters.
+        verified = dict(payload)
+        verified["username"] = payload.get("login_handle") or payload.get("sub")
+        verified["token_type"] = payload.get("type")
+        return verified
         
     except AuthError:
         # Backward-compatible fallback (explicitly gated): accept legacy HS256 *service* tokens.
@@ -268,12 +278,11 @@ async def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Dep
                 exp = int(payload.get("exp") or 0)
                 if exp and exp <= int(time.time()):
                     raise AuthError("Token expired")
-                return {
-                    "username": payload.get("sub"),
-                    "roles": payload.get("roles", []),
-                    "token_type": payload.get("type"),
-                    "exp": exp or None,
-                }
+                verified = dict(payload)
+                verified["username"] = payload.get("sub")
+                verified["token_type"] = payload.get("type")
+                verified["exp"] = exp or None
+                return verified
             except Exception:
                 pass
         # Fallback to auth service verification for compatibility
@@ -287,12 +296,10 @@ async def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Dep
                 headers={"WWW-Authenticate": "Bearer"}
             )
         
-        return {
-            "username": token_data.get("username"),
-            "roles": token_data.get("roles", []),
-            "token_type": token_data.get("type"),
-            "exp": token_data.get("exp")
-        }
+        verified = dict(token_data.get("claims") or token_data)
+        verified["username"] = token_data.get("login_handle") or token_data.get("username") or verified.get("sub")
+        verified["token_type"] = verified.get("type")
+        return verified
 
 async def verify_service_token(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Dict[str, Any]:
     """Verify service token for inter-service communication"""
@@ -350,7 +357,7 @@ def require_user():
     """Dependency decorator to require user role"""
     return require_role("user")
 
-def create_service_token(service_name: str, service_secret: str = None) -> str:
+def create_service_token(service_name: str, service_secret: Optional[str] = None) -> str:
     """Create a service token for inter-service communication"""
     # P0.1: Service tokens should be created by auth service
     # This function is deprecated - use auth service /token endpoint instead
@@ -391,7 +398,7 @@ def verify_service_token_locally(token: str) -> bool:
                 # RS256 token - we can't verify async here, return False to trigger service verification
                 # This maintains backward compatibility
                 return False
-        except:
+        except JWTError:
             pass
         
         # Fallback to HS256 for legacy tokens
@@ -452,11 +459,6 @@ class SecurityContext:
 def get_security_context(user_data: Dict[str, Any]) -> SecurityContext:
     """Create security context from user data"""
     return SecurityContext(user_data)
-
-# Rate limiting utilities
-from collections import defaultdict
-import asyncio
-from datetime import datetime, timedelta
 
 class RateLimiter:
     """Simple in-memory rate limiter"""
@@ -557,8 +559,8 @@ def get_cors_config():
 # Authentication middleware factory
 def create_auth_middleware(
     require_auth: bool = True,
-    allowed_paths: List[str] = None,
-    required_roles: List[str] = None
+    allowed_paths: Optional[List[str]] = None,
+    required_roles: Optional[List[str]] = None
 ):
     """Create authentication middleware"""
     
@@ -633,7 +635,7 @@ def verify_consent_grant_locally(grant_token: str) -> Dict[str, Any]:
         except JWTError:
             # Re-raise JWT errors from RS256 check
             raise
-        except:
+        except (TypeError, ValueError):
             pass
         
         # Fallback to HS256 for legacy tokens
@@ -719,8 +721,8 @@ def check_grant_purpose(grant_payload: Dict[str, Any], allowed_purposes: List[st
 
 async def require_consent_grant(
     required_scope: str,
-    allowed_purposes: List[str] = None,
-    grant_token: str = None
+    allowed_purposes: Optional[List[str]] = None,
+    grant_token: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Dependency function to require a valid consent grant with specific scope
@@ -751,4 +753,3 @@ async def require_consent_grant(
         raise AuthError(f"Consent grant purpose not allowed: {grant_payload.get('purpose')}")
     
     return grant_payload
-from .datetime_utils import now_utc

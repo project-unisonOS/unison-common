@@ -5,13 +5,14 @@ This module provides comprehensive event replay functionality to store
 event envelopes by trace_id and replay them for debugging and auditing.
 """
 
-import json
 import time
 import uuid
 from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 import logging
+
+from .datetime_utils import now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -431,7 +432,10 @@ class ReplayManager:
             )
             logger.error(f"Replay session {session.session_id} failed: {e}")
         
-        return self.store.get_replay_session(session.session_id)
+        result = self.store.get_replay_session(session.session_id)
+        if result is None:
+            raise RuntimeError(f"Replay session {session.session_id} disappeared")
+        return result
     
     def get_replay_history(self, trace_id: str) -> List[Dict[str, Any]]:
         """Get replay history for a trace"""
@@ -465,9 +469,9 @@ class ReplayManager:
         end_time = max(e.timestamp for e in envelopes)
         total_processing_time = sum(e.processing_time_ms or 0 for e in envelopes)
         
-        event_types = {}
-        sources = {}
-        status_codes = {}
+        event_types: Dict[str, int] = {}
+        sources: Dict[str, int] = {}
+        status_codes: Dict[int, int] = {}
         
         for envelope in envelopes:
             event_types[envelope.event_type] = event_types.get(envelope.event_type, 0) + 1
@@ -524,4 +528,3 @@ def initialize_replay(config: Optional[ReplayConfig] = None, store=None):
     """Initialize the global replay manager"""
     global _default_manager
     _default_manager = ReplayManager(config, store)
-from .datetime_utils import now_utc, isoformat_utc
