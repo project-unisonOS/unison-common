@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://unisonos.ai/schemas/channel-gateway.v1.schema.json",
+  "title": "Unison Channel Gateway v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "event_id", "provider", "provider_account_id", "direction", "external_subject", "external_thread_id", "provider_event_id", "occurred_at", "nonce", "assurance", "capabilities", "privacy", "delivery_state"],
+  "properties": {
+    "version": {"const": "5.0"},
+    "event_id": {"type": "string", "minLength": 1},
+    "provider": {"type": "string", "minLength": 1},
+    "provider_account_id": {"type": "string", "minLength": 1},
+    "direction": {"enum": ["inbound", "outbound"]},
+    "external_subject": {"type": "string", "minLength": 1},
+    "external_thread_id": {"type": "string", "minLength": 1},
+    "provider_event_id": {"type": "string", "minLength": 1},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "received_at": {"type": "string", "format": "date-time"},
+    "nonce": {"type": "string", "minLength": 16},
+    "text": {"type": "string", "maxLength": 4096},
+    "attachment_references": {"type": "array", "items": {"type": "string"}},
+    "assurance": {"enum": ["low", "medium", "high"]},
+    "capabilities": {"type": "object"},
+    "privacy": {"type": "object"},
+    "delivery_state": {"enum": ["received", "draft", "queued", "sent", "delivered", "failed", "cancelled", "expired"]},
+    "bound_person_id": {"type": ["string", "null"]},
+    "bound_assistant_instance_id": {"type": ["string", "null"]},
+    "purpose": {"type": "string"},
+    "sensitive_action_requested": {"type": "boolean"},
+    "recovery_action_requested": {"type": "boolean"},
+    "step_up_required": {"type": "boolean"}
+  }
+}
