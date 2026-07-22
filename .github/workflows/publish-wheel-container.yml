@@ -40,8 +40,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/unison-common-wheel:latest
-            ghcr.io/${{ github.repository_owner }}/unison-common-wheel:${{ github.sha }}
+            ghcr.io/project-unisonos/unison-common-wheel:latest
+            ghcr.io/project-unisonos/unison-common-wheel:${{ github.sha }}
           provenance: true
           sbom: true
           cache-from: type=gha
@@ -50,6 +50,6 @@ jobs:
       - name: Attest wheel container provenance
         uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
         with:
-          subject-name: ghcr.io/${{ github.repository_owner }}/unison-common-wheel
+          subject-name: ghcr.io/project-unisonos/unison-common-wheel
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
