@@ -179,6 +179,13 @@ TTL, provenance, and optional metadata.
 
 ## 📚 Related Projects
 
+### Bounded assistant workflow contracts
+
+`unison_common.workflows` defines Phase 7 task plans, exact approvals,
+failure/recovery records, outcome metrics, credential-free replay envelopes,
+and prohibited commercial or engagement ranking signals. The canonical schema
+is `schemas/assistant-workflow.v1.schema.json`.
+
 - [unison-orchestrator](../unison-orchestrator/) - Main orchestration service
 - [unison-context-graph](../unison-context-graph/) - Context management service
 - [unison-consent](../unison-consent/) - Consent management service

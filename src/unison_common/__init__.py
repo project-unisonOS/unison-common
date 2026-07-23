@@ -273,6 +273,20 @@ from .backup import (
     WrappedKeyReference,
     canonical_json as canonical_backup_json,
 )
+from .workflows import (
+    ApprovalRecord,
+    FailureRecovery,
+    OutcomeEvidence,
+    OutcomeMetrics,
+    PROHIBITED_RANKING_SIGNALS,
+    StepState,
+    TaskPlan,
+    WorkflowKind,
+    WorkflowRecord,
+    WorkflowState,
+    WorkflowStep,
+    validate_ranking_signals,
+)
 
 __all__ = [
     "validate_event_envelope",
@@ -448,4 +462,16 @@ __all__ = [
     "VerificationStatus",
     "WrappedKeyReference",
     "canonical_backup_json",
+    "ApprovalRecord",
+    "FailureRecovery",
+    "OutcomeEvidence",
+    "OutcomeMetrics",
+    "PROHIBITED_RANKING_SIGNALS",
+    "StepState",
+    "TaskPlan",
+    "WorkflowKind",
+    "WorkflowRecord",
+    "WorkflowState",
+    "WorkflowStep",
+    "validate_ranking_signals",
 ]
