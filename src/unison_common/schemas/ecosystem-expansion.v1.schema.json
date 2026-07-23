@@ -16,13 +16,69 @@
         "text": {"type": "string", "minLength": 1},
         "privacy": {"enum": ["private", "shared", "public"]},
         "urgency": {"enum": ["polite", "important", "critical"]},
-        "actions": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["id", "label", "kind"], "properties": {"id": {"type": "string", "minLength": 1}, "label": {"type": "string", "minLength": 1}, "kind": {"enum": ["confirm", "cancel", "retry", "recover", "dismiss"]}}}}
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "label", "kind"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1},
+              "label": {"type": "string", "minLength": 1},
+              "kind": {"enum": ["confirm", "cancel", "retry", "recover", "dismiss"]}
+            }
+          }
+        }
       }
     },
-    "available_modalities": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["visual", "speech", "captions", "keyboard", "switch", "aac", "braille", "sign", "haptic"]}},
-    "preferences": {"type": "object", "additionalProperties": false, "required": ["required", "avoided", "reduced_motion", "high_contrast", "simplified_language"], "properties": {"required": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}, "avoided": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}, "reduced_motion": {"type": "boolean"}, "high_contrast": {"type": "boolean"}, "simplified_language": {"type": "boolean"}}},
-    "selected_outputs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
-    "fallbacks": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["when_unavailable", "use", "preserves_actions"], "properties": {"when_unavailable": {"type": "string", "minLength": 1}, "use": {"type": "string", "minLength": 1}, "preserves_actions": {"const": true}}}},
-    "model_policy": {"type": "object", "additionalProperties": false, "required": ["profile", "allowed_locations", "max_disclosure", "cost_ceiling"], "properties": {"profile": {"type": "string", "minLength": 1}, "allowed_locations": {"type": "array", "minItems": 1, "items": {"enum": ["device", "household", "remote"]}}, "max_disclosure": {"enum": ["none", "metadata", "minimized-content"]}, "cost_ceiling": {"type": "number", "minimum": 0}}}
+    "available_modalities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"enum": ["visual", "speech", "captions", "keyboard", "switch", "aac", "braille", "sign", "haptic"]}
+    },
+    "preferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "avoided", "reduced_motion", "high_contrast", "simplified_language"],
+      "properties": {
+        "required": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "avoided": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "reduced_motion": {"type": "boolean"},
+        "high_contrast": {"type": "boolean"},
+        "simplified_language": {"type": "boolean"}
+      }
+    },
+    "selected_outputs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string"}
+    },
+    "fallbacks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["when_unavailable", "use", "preserves_actions"],
+        "properties": {
+          "when_unavailable": {"type": "string", "minLength": 1},
+          "use": {"type": "string", "minLength": 1},
+          "preserves_actions": {"const": true}
+        }
+      }
+    },
+    "model_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile", "allowed_locations", "max_disclosure", "cost_ceiling"],
+      "properties": {
+        "profile": {"type": "string", "minLength": 1},
+        "allowed_locations": {"type": "array", "minItems": 1, "items": {"enum": ["device", "household", "remote"]}},
+        "max_disclosure": {"enum": ["none", "metadata", "minimized-content"]},
+        "cost_ceiling": {"type": "number", "minimum": 0}
+      }
+    }
   }
 }
