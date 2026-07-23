@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-unisonos.github.io/schemas/assistant-workflow.v1.schema.json",
+  "title": "Unison bounded assistant workflow",
+  "type": "object",
+  "required": ["version", "plan_id", "person_id", "assistant_id", "kind", "purpose", "context_space_ids", "steps", "state", "idempotency_key"],
+  "properties": {
+    "version": {"const": "7.0"},
+    "plan_id": {"type": "string", "minLength": 1},
+    "person_id": {"type": "string", "minLength": 1},
+    "assistant_id": {"type": "string", "minLength": 1},
+    "kind": {
+      "enum": [
+        "calendar_coordination",
+        "email_triage_draft",
+        "reminder_commitment_review",
+        "household_coordination",
+        "contact_recall",
+        "document_web_research",
+        "travel_planning"
+      ]
+    },
+    "purpose": {"type": "string", "minLength": 1},
+    "context_space_ids": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "charter_constraints": {"type": "array", "items": {"type": "string"}},
+    "commitment_ids": {"type": "array", "items": {"type": "string"}},
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["step_id", "capability", "action", "provider", "state", "requires_approval", "external_call", "reversible", "recipient_ids", "disclosed_fields", "attempt"],
+        "properties": {
+          "step_id": {"type": "string", "minLength": 1},
+          "capability": {"type": "string", "minLength": 1},
+          "action": {"type": "string", "minLength": 1},
+          "provider": {"type": "string", "minLength": 1},
+          "state": {"enum": ["pending", "approved", "running", "completed", "failed", "cancelled", "compensated"]},
+          "requires_approval": {"type": "boolean"},
+          "external_call": {"type": "boolean"},
+          "reversible": {"type": "boolean"},
+          "recipient_ids": {"type": "array", "items": {"type": "string"}},
+          "disclosed_fields": {"type": "array", "items": {"type": "string"}},
+          "attempt": {"type": "integer", "minimum": 0}
+        },
+        "additionalProperties": false
+      }
+    },
+    "state": {"enum": ["planned", "awaiting_approval", "running", "cancelled", "recoverable", "compensated", "completed", "failed"]},
+    "idempotency_key": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "format": "date-time"}
+  },
+  "additionalProperties": false
+}
