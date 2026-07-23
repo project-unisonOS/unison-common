@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://unisonos.ai/schemas/provider-blind-backup.v1.schema.json",
+  "title": "UnisonOS Provider-Blind Backup v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format_version", "snapshot_id", "opaque_scope_id", "scope_kind", "scope_id", "key_epoch", "lineage", "chunks", "tombstones", "provenance"],
+  "properties": {
+    "format_version": {"const": "unison-backup-v1"},
+    "snapshot_id": {"type": "string", "minLength": 1},
+    "opaque_scope_id": {"type": "string", "minLength": 20},
+    "scope_kind": {"enum": ["person", "shared-space", "device"]},
+    "scope_id": {"type": "string", "minLength": 1},
+    "key_epoch": {"type": "integer", "minimum": 1},
+    "lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence", "parent_manifest_digest", "created_at"],
+      "properties": {
+        "sequence": {"type": "integer", "minimum": 1},
+        "parent_manifest_digest": {"type": ["string", "null"]},
+        "created_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "chunks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["object_id", "plaintext_sha256", "plaintext_size", "stored_size", "ordinal"],
+        "properties": {
+          "object_id": {"type": "string", "minLength": 20},
+          "plaintext_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "plaintext_size": {"type": "integer", "minimum": 0},
+          "stored_size": {"type": "integer", "minimum": 0},
+          "ordinal": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "tombstones": {"type": "array", "items": {"$ref": "#/$defs/tombstone"}},
+    "provenance": {"type": "array", "items": {"type": "string"}},
+    "retention_until": {"type": ["string", "null"], "format": "date-time"}
+  },
+  "$defs": {
+    "tombstone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tombstone_id", "target_type", "target_id", "scope_kind", "scope_id", "deleted_at", "reason", "cryptographic_erasure"],
+      "properties": {
+        "tombstone_id": {"type": "string"},
+        "target_type": {"type": "string"},
+        "target_id": {"type": "string"},
+        "scope_kind": {"enum": ["person", "shared-space", "device"]},
+        "scope_id": {"type": "string"},
+        "deleted_at": {"type": "string", "format": "date-time"},
+        "reason": {"type": "string"},
+        "cryptographic_erasure": {"type": "boolean"}
+      }
+    }
+  }
+}

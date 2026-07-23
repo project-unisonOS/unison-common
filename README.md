@@ -1,5 +1,18 @@
 # unison-common
 
+## Provider-blind backup v1
+
+`unison_common.backup` is the canonical Phase 6 contract and cryptographic
+profile for encrypted chunks, signed manifests, anchored lineage, recovery
+capsules, tombstones, verification records, and restore plans. The canonical
+machine-readable contract is
+`schemas/provider-blind-backup.v1.schema.json`; the packaged copy is
+drift-checked.
+
+The profile uses local AES-256-GCM envelope encryption, HKDF-SHA-256 domain
+separation, Ed25519 signatures, and Argon2id recovery protection. It never
+grants a storage provider or household administrator recovery authority.
+
 Shared Python utilities for the Unison platform.
 
 This package is intended to be imported by all Unison services (orchestrator, context, storage, policy, etc).
@@ -199,4 +212,3 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](../LIC
 ## Docs
 
 Full docs at https://project-unisonos.github.io
-
