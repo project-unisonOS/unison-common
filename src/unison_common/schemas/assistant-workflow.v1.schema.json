@@ -9,7 +9,17 @@
     "plan_id": {"type": "string", "minLength": 1},
     "person_id": {"type": "string", "minLength": 1},
     "assistant_id": {"type": "string", "minLength": 1},
-    "kind": {"enum": ["calendar_coordination", "email_triage_draft", "reminder_commitment_review", "household_coordination", "contact_recall", "document_web_research", "travel_planning"]},
+    "kind": {
+      "enum": [
+        "calendar_coordination",
+        "email_triage_draft",
+        "reminder_commitment_review",
+        "household_coordination",
+        "contact_recall",
+        "document_web_research",
+        "travel_planning"
+      ]
+    },
     "purpose": {"type": "string", "minLength": 1},
     "context_space_ids": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
     "charter_constraints": {"type": "array", "items": {"type": "string"}},
