@@ -1,0 +1,5 @@
+SYNTHETIC FIXTURE ONLY
+Patient: Avery Example
+Medication list: Examplemed 5 mg
+Next visit: 2026-09-10
+Privacy canary: CANARY-HEALTH-0001
