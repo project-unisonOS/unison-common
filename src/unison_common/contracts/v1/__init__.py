@@ -35,6 +35,11 @@ from .semantic_experience import (
     SemanticRelationship,
 )
 from .interaction_profile import InteractionProfile, ProfilePreference, SituationalOverride
+from .semantic_runtime import (
+    AuthenticatedTarget, EquivalenceFinding, EquivalenceReport, ExpressionContext,
+    ExpressionPlan, ExpressionPlanRequest, InteractionSession, ModalityCapability,
+    PendingConfirmation, SemanticObservation,
+)
 from .speechio import (
     AsrProfile,
     BargeInPolicy,
@@ -94,6 +99,16 @@ __all__ = [
     "InteractionProfile",
     "ProfilePreference",
     "SituationalOverride",
+    "AuthenticatedTarget",
+    "EquivalenceFinding",
+    "EquivalenceReport",
+    "ExpressionContext",
+    "ExpressionPlan",
+    "ExpressionPlanRequest",
+    "InteractionSession",
+    "ModalityCapability",
+    "PendingConfirmation",
+    "SemanticObservation",
     "RouterOutput",
     "AsrProfile",
     "BargeInPolicy",
