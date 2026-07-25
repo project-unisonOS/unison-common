@@ -35,6 +35,10 @@ from .semantic_experience import (
     SemanticRelationship,
 )
 from .interaction_profile import InteractionProfile, ProfilePreference, SituationalOverride
+from .model_runtime import (
+    ModelHardwareRequirement, ModelManifest, ModelRouteDecision, ModelSemanticProposal,
+    ModelTask, ModelTaskRequirement, SignedModelManifest,
+)
 from .semantic_runtime import (
     AuthenticatedTarget, EquivalenceFinding, EquivalenceReport, ExpressionContext,
     ExpressionPlan, ExpressionPlanRequest, InteractionSession, ModalityCapability,
@@ -99,6 +103,13 @@ __all__ = [
     "InteractionProfile",
     "ProfilePreference",
     "SituationalOverride",
+    "ModelHardwareRequirement",
+    "ModelManifest",
+    "ModelRouteDecision",
+    "ModelSemanticProposal",
+    "ModelTask",
+    "ModelTaskRequirement",
+    "SignedModelManifest",
     "AuthenticatedTarget",
     "EquivalenceFinding",
     "EquivalenceReport",
