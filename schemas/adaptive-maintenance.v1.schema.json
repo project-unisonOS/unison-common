@@ -1,0 +1,293 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://unisonos.ai/schemas/adaptive-maintenance.v1.schema.json",
+  "title": "Unison adaptive maintenance contracts",
+  "type": "object",
+  "required": ["contract_version", "record_type", "record"],
+  "properties": {
+    "contract_version": {"const": "unison.adaptive-maintenance.v1"},
+    "record_type": {
+      "enum": [
+        "device_profile",
+        "health_observation",
+        "maintenance_evidence",
+        "maintenance_candidate",
+        "maintenance_recommendation",
+        "maintenance_receipt",
+        "maintenance_policy",
+        "source_registry"
+      ]
+    },
+    "record": {"type": "object"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"record_type": {"const": "device_profile"}}},
+      "then": {"properties": {"record": {"$ref": "#/$defs/deviceProfile"}}}
+    },
+    {
+      "if": {"properties": {"record_type": {"const": "health_observation"}}},
+      "then": {"properties": {"record": {"$ref": "#/$defs/healthObservation"}}}
+    },
+    {
+      "if": {"properties": {"record_type": {"const": "maintenance_evidence"}}},
+      "then": {"properties": {"record": {"$ref": "#/$defs/maintenanceEvidence"}}}
+    },
+    {
+      "if": {"properties": {"record_type": {"const": "maintenance_candidate"}}},
+      "then": {"properties": {"record": {"$ref": "#/$defs/maintenanceCandidate"}}}
+    },
+    {
+      "if": {"properties": {"record_type": {"const": "maintenance_recommendation"}}},
+      "then": {"properties": {"record": {"$ref": "#/$defs/maintenanceRecommendation"}}}
+    },
+    {
+      "if": {"properties": {"record_type": {"const": "maintenance_receipt"}}},
+      "then": {"properties": {"record": {"$ref": "#/$defs/maintenanceReceipt"}}}
+    },
+    {
+      "if": {"properties": {"record_type": {"const": "maintenance_policy"}}},
+      "then": {"properties": {"record": {"$ref": "#/$defs/maintenancePolicy"}}}
+    },
+    {
+      "if": {"properties": {"record_type": {"const": "source_registry"}}},
+      "then": {"properties": {"record": {"$ref": "#/$defs/sourceRegistry"}}}
+    }
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "deviceProfile": {
+      "type": "object",
+      "required": [
+        "profile_id", "observed_at", "architecture", "cpu", "memory",
+        "storage", "software", "support_tier"
+      ],
+      "properties": {
+        "profile_id": {"type": "string", "minLength": 1},
+        "observed_at": {"$ref": "#/$defs/timestamp"},
+        "architecture": {"enum": ["x86_64", "aarch64", "unknown"]},
+        "cpu": {
+          "type": "object",
+          "required": ["logical_cores", "features"],
+          "properties": {
+            "vendor": {"type": "string"},
+            "model": {"type": "string"},
+            "logical_cores": {"type": "integer", "minimum": 1},
+            "features": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+          },
+          "additionalProperties": false
+        },
+        "memory": {
+          "type": "object",
+          "required": ["total_bytes"],
+          "properties": {
+            "total_bytes": {"type": "integer", "minimum": 1},
+            "upgrade_slots_total": {"type": ["integer", "null"], "minimum": 0},
+            "upgrade_slots_free": {"type": ["integer", "null"], "minimum": 0}
+          },
+          "additionalProperties": false
+        },
+        "storage": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["device", "capacity_bytes", "free_bytes"],
+            "properties": {
+              "device": {"type": "string"},
+              "kind": {"enum": ["nvme", "ssd", "hdd", "virtual", "unknown"]},
+              "capacity_bytes": {"type": "integer", "minimum": 1},
+              "free_bytes": {"type": "integer", "minimum": 0},
+              "health": {"enum": ["healthy", "warning", "critical", "unknown"]}
+            },
+            "additionalProperties": false
+          }
+        },
+        "accelerators": {"type": "array", "items": {"type": "object"}},
+        "firmware": {"type": "object"},
+        "software": {
+          "type": "object",
+          "required": ["os", "kernel", "components"],
+          "properties": {
+            "os": {"type": "string"},
+            "kernel": {"type": "string"},
+            "unison_release": {"type": ["string", "null"]},
+            "components": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["ecosystem", "name", "version"],
+                "properties": {
+                  "ecosystem": {"type": "string"},
+                  "name": {"type": "string"},
+                  "version": {"type": "string"},
+                  "digest": {"type": ["string", "null"]}
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "support_tier": {"enum": ["reference", "compatible", "community-tested", "unsupported", "unknown"]},
+        "compatibility_matrix_version": {"type": ["string", "null"]},
+        "redactions": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "healthObservation": {
+      "type": "object",
+      "required": [
+        "observation_id", "metric", "component", "window_start",
+        "window_end", "value", "unit", "severity", "retention_class"
+      ],
+      "properties": {
+        "observation_id": {"type": "string", "minLength": 1},
+        "metric": {"type": "string", "minLength": 1},
+        "component": {"type": "string", "minLength": 1},
+        "window_start": {"$ref": "#/$defs/timestamp"},
+        "window_end": {"$ref": "#/$defs/timestamp"},
+        "aggregation": {"enum": ["instant", "mean", "maximum", "minimum", "p95", "rate", "count"]},
+        "value": {"type": "number"},
+        "unit": {"type": "string"},
+        "severity": {"enum": ["healthy", "notice", "warning", "critical"]},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "collection_method": {"type": "string"},
+        "retention_class": {"enum": ["ephemeral", "operational", "incident"]},
+        "contains_personal_content": {"const": false}
+      },
+      "additionalProperties": false
+    },
+    "maintenanceEvidence": {
+      "type": "object",
+      "required": [
+        "evidence_id", "source_id", "source_class", "retrieved_at",
+        "content_sha256", "trust_tier", "affected_components", "claims"
+      ],
+      "properties": {
+        "evidence_id": {"type": "string"},
+        "source_id": {"type": "string"},
+        "canonical_url": {"type": "string", "format": "uri"},
+        "source_class": {"enum": ["security", "release", "compatibility", "technical", "community"]},
+        "retrieved_at": {"$ref": "#/$defs/timestamp"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "signature_verified": {"type": "boolean"},
+        "trust_tier": {"enum": ["authoritative", "corroborating", "discovery-only"]},
+        "affected_components": {"type": "array", "items": {"type": "object"}},
+        "claims": {"type": "array", "items": {"type": "string"}},
+        "severity": {"enum": ["none", "low", "medium", "high", "critical"]},
+        "fixed_versions": {"type": "array", "items": {"type": "string"}},
+        "corroborating_evidence_ids": {"type": "array", "items": {"type": "string"}},
+        "untrusted_content": {"const": true},
+        "expires_at": {"anyOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]}
+      },
+      "additionalProperties": false
+    },
+    "maintenanceCandidate": {
+      "type": "object",
+      "required": [
+        "candidate_id", "action_class", "target", "evidence_ids",
+        "applicability", "local_need", "safe_to_recommend"
+      ],
+      "properties": {
+        "candidate_id": {"type": "string"},
+        "action_class": {"type": "string"},
+        "target": {"type": "object"},
+        "evidence_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "applicability": {"enum": ["applicable", "not-applicable", "unknown"]},
+        "local_need": {"type": "number", "minimum": 0, "maximum": 1},
+        "compatibility_reasons": {"type": "array", "items": {"type": "string"}},
+        "safe_to_recommend": {"type": "boolean"},
+        "blocked_reasons": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "maintenanceRecommendation": {
+      "type": "object",
+      "required": [
+        "recommendation_id", "candidate_id", "title", "rationale",
+        "expected_effects", "risk", "authority", "rollback", "rank"
+      ],
+      "properties": {
+        "recommendation_id": {"type": "string"},
+        "candidate_id": {"type": "string"},
+        "title": {"type": "string"},
+        "rationale": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "alternatives": {"type": "array", "items": {"type": "string"}},
+        "expected_effects": {"type": "object"},
+        "risk": {"enum": ["low", "medium", "high", "critical"]},
+        "authority": {"enum": ["observe", "recommend", "prepare", "maintain", "emergency-protect"]},
+        "requires_confirmation": {"type": "boolean"},
+        "rollback": {"type": "object"},
+        "rank": {"type": "number"},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "expires_at": {"anyOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]}
+      },
+      "additionalProperties": false
+    },
+    "maintenanceReceipt": {
+      "type": "object",
+      "required": [
+        "receipt_id", "recommendation_id", "plan_sha256", "started_at",
+        "result", "steps", "health_decision"
+      ],
+      "properties": {
+        "receipt_id": {"type": "string"},
+        "recommendation_id": {"type": "string"},
+        "plan_sha256": {"$ref": "#/$defs/sha256"},
+        "started_at": {"$ref": "#/$defs/timestamp"},
+        "completed_at": {"anyOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]},
+        "result": {"enum": ["staged", "promoted", "rolled-back", "failed", "cancelled"]},
+        "steps": {"type": "array", "items": {"type": "object"}},
+        "checkpoint_id": {"type": ["string", "null"]},
+        "health_decision": {"type": "object"},
+        "before_observation_ids": {"type": "array", "items": {"type": "string"}},
+        "after_observation_ids": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "maintenancePolicy": {
+      "type": "object",
+      "required": ["policy_id", "default_autonomy", "action_classes", "emergency_protect"],
+      "properties": {
+        "policy_id": {"type": "string"},
+        "default_autonomy": {"enum": ["observe", "recommend", "prepare", "maintain"]},
+        "action_classes": {"type": "object"},
+        "emergency_protect": {"type": "boolean"},
+        "maximum_downtime_seconds": {"type": "integer", "minimum": 0},
+        "maximum_download_bytes": {"type": "integer", "minimum": 0},
+        "maintenance_windows": {"type": "array", "items": {"type": "object"}},
+        "expires_at": {"anyOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]}
+      },
+      "additionalProperties": false
+    },
+    "sourceRegistry": {
+      "type": "object",
+      "required": ["registry_version", "sources", "signature"],
+      "properties": {
+        "registry_version": {"type": "integer", "minimum": 1},
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["source_id", "base_url", "trust_tier", "allowed_paths", "enabled"],
+            "properties": {
+              "source_id": {"type": "string"},
+              "base_url": {"type": "string", "format": "uri"},
+              "trust_tier": {"enum": ["authoritative", "corroborating", "discovery-only"]},
+              "allowed_paths": {"type": "array", "items": {"type": "string"}},
+              "parser": {"type": "string"},
+              "rate_limit_per_hour": {"type": "integer", "minimum": 1},
+              "enabled": {"type": "boolean"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "signature": {"type": "object"}
+      },
+      "additionalProperties": false
+    }
+  }
+}
