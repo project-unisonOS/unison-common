@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://unisonos.ai/schemas/semantic-experience.v1.schema.json",
+  "title": "Semantic Experience Model v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "experience_id", "trace_id", "purpose", "outcome", "nodes", "actions", "privacy", "attention"],
+  "properties": {
+    "schema_version": {"const": "sem.v1"},
+    "experience_id": {"type": "string", "minLength": 1},
+    "trace_id": {"type": "string", "minLength": 1},
+    "session_id": {"type": ["string", "null"]},
+    "person_id": {"type": ["string", "null"]},
+    "purpose": {"type": "string", "minLength": 1},
+    "outcome": {"type": "string", "minLength": 1},
+    "nodes": {"type": "array", "items": {"$ref": "#/$defs/node"}},
+    "actions": {"type": "array", "items": {"$ref": "#/$defs/action"}},
+    "privacy": {"type": "object"},
+    "attention": {"enum": ["ambient", "normal", "important", "urgent"]},
+    "recovery": {"type": ["string", "null"]}
+  },
+  "$defs": {
+    "provenance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_id", "source_type", "confidence"],
+      "properties": {
+        "source_id": {"type": "string", "minLength": 1},
+        "source_type": {"type": "string", "minLength": 1},
+        "observed_at": {"type": ["string", "null"], "format": "date-time"},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "relationship": {
+      "type": "object", "additionalProperties": false,
+      "required": ["predicate", "target_node_id"],
+      "properties": {"predicate": {"type": "string", "minLength": 1}, "target_node_id": {"type": "string", "minLength": 1}}
+    },
+    "node": {
+      "type": "object", "additionalProperties": false,
+      "required": ["node_id", "kind", "label", "relationships", "provenance", "required", "exact"],
+      "properties": {
+        "node_id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["outcome", "entity", "value", "group", "sequence", "comparison", "trend", "spatial", "notice"]},
+        "label": {"type": "string", "minLength": 1},
+        "value": {},
+        "summary": {"type": ["string", "null"]},
+        "detail": {"type": ["string", "null"]},
+        "relationships": {"type": "array", "items": {"$ref": "#/$defs/relationship"}},
+        "provenance": {"type": "array", "items": {"$ref": "#/$defs/provenance"}},
+        "required": {"type": "boolean"},
+        "exact": {"type": "boolean"},
+        "uncertainty": {"type": ["string", "null"]}
+      }
+    },
+    "action": {
+      "type": "object", "additionalProperties": false,
+      "required": ["action_id", "label", "capability", "target", "consequence", "risk", "reversible", "confirmation_required", "provenance"],
+      "properties": {
+        "action_id": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "minLength": 1},
+        "capability": {"type": "string", "minLength": 1},
+        "target": {"type": "object"},
+        "consequence": {"type": "string", "minLength": 1},
+        "risk": {"enum": ["low", "medium", "high", "critical"]},
+        "reversible": {"type": "boolean"},
+        "confirmation_required": {"type": "boolean"},
+        "recipient": {"type": ["string", "null"]},
+        "cancellation": {"type": ["string", "null"]},
+        "recovery": {"type": ["string", "null"]},
+        "provenance": {"type": "array", "items": {"$ref": "#/$defs/provenance"}}
+      }
+    }
+  }
+}
+
