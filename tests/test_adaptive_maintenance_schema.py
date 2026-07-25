@@ -70,3 +70,45 @@ def test_community_evidence_remains_untrusted_and_discovery_only():
     record["record"]["untrusted_content"] = False
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate(record, _schema())
+
+
+def test_grants_are_bounded_and_community_claims_are_non_executable():
+    grant = {
+        "contract_version": "unison.adaptive-maintenance.v1",
+        "record_type": "autonomy_grant",
+        "record": {
+            "grant_id": "grant-1",
+            "device_id": "device-1",
+            "action_classes": ["service-restart"],
+            "not_before": "2026-07-25T00:00:00Z",
+            "expires_at": "2026-07-25T01:00:00Z",
+            "max_actions": 1,
+            "max_downtime_seconds": 60,
+            "checkpoint_required": True,
+            "revoked": False,
+        },
+    }
+    jsonschema.validate(grant, _schema(), format_checker=jsonschema.FormatChecker())
+    grant["record"]["action_classes"] = ["firmware-flash"]
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(grant, _schema())
+    claim = {
+        "contract_version": "unison.adaptive-maintenance.v1",
+        "record_type": "community_claim",
+        "record": {
+            "claim_id": "claim-1",
+            "source_id": "forum",
+            "canonical_url": "https://example.test/post",
+            "subject": "model-runtime",
+            "statement": "A newer runtime may be faster",
+            "content_sha256": "a" * 64,
+            "corroborating_sources": [],
+            "conflicts": [],
+            "trust_tier": "discovery-only",
+            "executable": False,
+        },
+    }
+    jsonschema.validate(claim, _schema(), format_checker=jsonschema.FormatChecker())
+    claim["record"]["executable"] = True
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(claim, _schema())

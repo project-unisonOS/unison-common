@@ -15,6 +15,8 @@
         "maintenance_recommendation",
         "maintenance_receipt",
         "maintenance_policy",
+        "autonomy_grant",
+        "community_claim",
         "source_registry"
       ]
     },
@@ -48,6 +50,14 @@
     {
       "if": {"properties": {"record_type": {"const": "maintenance_policy"}}},
       "then": {"properties": {"record": {"$ref": "#/$defs/maintenancePolicy"}}}
+    },
+    {
+      "if": {"properties": {"record_type": {"const": "autonomy_grant"}}},
+      "then": {"properties": {"record": {"$ref": "#/$defs/autonomyGrant"}}}
+    },
+    {
+      "if": {"properties": {"record_type": {"const": "community_claim"}}},
+      "then": {"properties": {"record": {"$ref": "#/$defs/communityClaim"}}}
     },
     {
       "if": {"properties": {"record_type": {"const": "source_registry"}}},
@@ -260,6 +270,55 @@
         "maximum_download_bytes": {"type": "integer", "minimum": 0},
         "maintenance_windows": {"type": "array", "items": {"type": "object"}},
         "expires_at": {"anyOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]}
+      },
+      "additionalProperties": false
+    },
+    "autonomyGrant": {
+      "type": "object",
+      "required": [
+        "grant_id", "device_id", "action_classes", "not_before", "expires_at",
+        "max_actions", "max_downtime_seconds", "checkpoint_required", "revoked"
+      ],
+      "properties": {
+        "grant_id": {"type": "string"},
+        "device_id": {"type": "string"},
+        "action_classes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "service-restart", "service-failover", "cache-housekeeping",
+              "signed-patch-stage", "model-rollback", "configuration-rollback"
+            ]
+          }
+        },
+        "not_before": {"$ref": "#/$defs/timestamp"},
+        "expires_at": {"$ref": "#/$defs/timestamp"},
+        "max_actions": {"type": "integer", "minimum": 1},
+        "max_downtime_seconds": {"type": "integer", "minimum": 0},
+        "checkpoint_required": {"const": true},
+        "revoked": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "communityClaim": {
+      "type": "object",
+      "required": [
+        "claim_id", "source_id", "canonical_url", "subject", "statement",
+        "content_sha256", "trust_tier", "executable"
+      ],
+      "properties": {
+        "claim_id": {"type": "string"},
+        "source_id": {"type": "string"},
+        "canonical_url": {"type": "string", "format": "uri"},
+        "subject": {"type": "string"},
+        "statement": {"type": "string"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "corroborating_sources": {"type": "array", "items": {"type": "string"}},
+        "conflicts": {"type": "array", "items": {"type": "string"}},
+        "trust_tier": {"const": "discovery-only"},
+        "executable": {"const": false}
       },
       "additionalProperties": false
     },
