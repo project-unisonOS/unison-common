@@ -4,6 +4,8 @@ from pydantic import ValidationError
 from unison_common.contracts.v1 import (
     Connection,
     DerivedRecord,
+    DomainLink,
+    DomainRecord,
     LifeOperationDomain,
     ProvenanceRegion,
     SourceObject,
@@ -42,3 +44,16 @@ def test_health_and_finance_prohibited_actions_fail_closed():
     assert not authorize_life_operation(LifeOperationDomain.HEALTH, "diagnose")
     assert not authorize_life_operation(LifeOperationDomain.FINANCE, "transfer_funds")
     assert authorize_life_operation(LifeOperationDomain.HEALTH, "summarize_record")
+
+
+def test_inferred_condition_cannot_become_confirmed_diagnosis():
+    with pytest.raises(ValidationError):
+        DomainRecord(record_id="r", person_id="p", space_id="health:p", domain="health",
+                     record_type="condition", facts={"clinical_status": "confirmed"}, source_ids=["s"],
+                     evidence_status="inferred", confidence=0.5)
+
+
+def test_cross_domain_link_requires_explicit_person_approval():
+    with pytest.raises(ValidationError):
+        DomainLink(link_id="l", person_id="p", left_record_id="a", right_record_id="b",
+                   purpose="claim preparation", allowed_fields=["date"], approved_by_person=False)

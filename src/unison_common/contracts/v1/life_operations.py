@@ -139,18 +139,109 @@ class Brief(BaseModel):
     generated_at: datetime = Field(default_factory=utc_now)
 
 
+class DomainRecord(BaseModel):
+    schema_version: Literal["life-domain-record.v1"] = "life-domain-record.v1"
+    record_id: str
+    person_id: str
+    space_id: str
+    domain: Literal["household", "health", "finance", "care", "benefits", "insurance", "continuity"]
+    record_type: str
+    facts: dict[str, Any]
+    source_ids: list[str] = Field(min_length=1)
+    evidence_status: Literal["observed", "self-reported", "inferred", "confirmed"]
+    confidence: float = Field(ge=0, le=1)
+    shared: bool = False
+    created_at: datetime = Field(default_factory=utc_now)
+
+    @model_validator(mode="after")
+    def inference_cannot_confirm_diagnosis(self) -> "DomainRecord":
+        if self.domain == "health" and self.record_type == "condition" and self.evidence_status == "inferred":
+            if self.facts.get("clinical_status") == "confirmed":
+                raise ValueError("an inferred condition cannot become a confirmed diagnosis")
+        return self
+
+
+class DomainLink(BaseModel):
+    schema_version: Literal["life-domain-link.v1"] = "life-domain-link.v1"
+    link_id: str
+    person_id: str
+    left_record_id: str
+    right_record_id: str
+    purpose: str = Field(min_length=3)
+    allowed_fields: list[str] = Field(min_length=1)
+    recipient_ids: list[str] = Field(default_factory=list)
+    approved_by_person: bool
+    created_at: datetime = Field(default_factory=utc_now)
+
+    @model_validator(mode="after")
+    def require_person_approval(self) -> "DomainLink":
+        if not self.approved_by_person:
+            raise ValueError("cross-domain links require person approval")
+        return self
+
+
+class ExternalActionDraft(BaseModel):
+    schema_version: Literal["life-action-draft.v1"] = "life-action-draft.v1"
+    draft_id: str
+    person_id: str
+    action_type: str
+    domain_record_ids: list[str] = Field(min_length=1)
+    recipients: list[str] = Field(default_factory=list)
+    disclosed_fields: list[str] = Field(default_factory=list)
+    content: str
+    status: Literal["draft", "approved", "cancelled"] = "draft"
+    executable: Literal[False] = False
+
+
+class SafetyOutcome(BaseModel):
+    schema_version: Literal["life-safety-outcome.v1"] = "life-safety-outcome.v1"
+    outcome_id: str
+    person_id: str
+    domain: Literal["health", "finance"]
+    severity: Literal["routine", "prompt", "urgent", "emergency"]
+    guidance: str
+    source_ids: list[str] = Field(min_length=1)
+    deterministic_rule: str
+    dismisses_professional_care: Literal[False] = False
+
+
+class PilotMetric(BaseModel):
+    name: str
+    value: float
+    unit: str
+    target: float
+    passed: bool
+
+
+class PilotReport(BaseModel):
+    schema_version: Literal["life-operations-pilot.v1"] = "life-operations-pilot.v1"
+    pilot_id: str
+    cohort: Literal["synthetic-household", "synthetic-health", "synthetic-finance", "opt-in-human"]
+    opted_in: bool
+    metrics: list[PilotMetric]
+    boundary_incidents: int = Field(ge=0)
+    unsafe_actions: int = Field(ge=0)
+    supported_package_decision: Literal["hold", "approve", "reject"] = "hold"
+    generated_at: datetime = Field(default_factory=utc_now)
+
+
 class LifeOperationDomain(str, Enum):
+    HOUSEHOLD = "household"
     HEALTH = "health"
     FINANCE = "finance"
+    CROSS_DOMAIN = "cross-domain"
 
 
 PROHIBITED_ACTIONS: dict[LifeOperationDomain, frozenset[str]] = {
+    LifeOperationDomain.HOUSEHOLD: frozenset({"physical_actuation", "purchase", "schedule_service"}),
     LifeOperationDomain.HEALTH: frozenset({
         "diagnose", "prescribe", "change_medication", "cancel_clinical_care", "submit_medical_order"
     }),
     LifeOperationDomain.FINANCE: frozenset({
-        "transfer_funds", "trade_security", "open_credit", "change_beneficiary", "file_tax_return"
+        "transfer_funds", "trade_security", "open_credit", "change_beneficiary", "file_tax_return",
+        "close_account", "submit_dispute"
     }),
+    LifeOperationDomain.CROSS_DOMAIN: frozenset({"widen_disclosure", "destroy_independent_source"}),
 }
 
 
