@@ -25,6 +25,16 @@ from .life_operations import (
     authorize_life_operation,
 )
 from .rom import ResponseObjectModel, RomBlock, RomCard, RomText
+from .semantic_experience import (
+    SemanticAction,
+    SemanticExperience,
+    SemanticExpression,
+    SemanticNode,
+    SemanticNodeKind,
+    SemanticProvenance,
+    SemanticRelationship,
+)
+from .interaction_profile import InteractionProfile, ProfilePreference, SituationalOverride
 from .speechio import (
     AsrProfile,
     BargeInPolicy,
@@ -74,6 +84,16 @@ __all__ = [
     "RomBlock",
     "RomCard",
     "RomText",
+    "SemanticAction",
+    "SemanticExperience",
+    "SemanticExpression",
+    "SemanticNode",
+    "SemanticNodeKind",
+    "SemanticProvenance",
+    "SemanticRelationship",
+    "InteractionProfile",
+    "ProfilePreference",
+    "SituationalOverride",
     "RouterOutput",
     "AsrProfile",
     "BargeInPolicy",

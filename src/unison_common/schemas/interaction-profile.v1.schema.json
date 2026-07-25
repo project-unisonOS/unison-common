@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://unisonos.ai/schemas/interaction-profile.v1.schema.json",
+  "title": "Interaction Profile v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "person_id", "revision", "preferred_inputs", "preferred_outputs", "unavailable_modalities", "needs", "preferences", "device_associations", "situational_overrides", "updated_at"],
+  "properties": {
+    "schema_version": {"const": "interaction-profile.v1"},
+    "person_id": {"type": "string", "minLength": 1},
+    "revision": {"type": "integer", "minimum": 1},
+    "preferred_inputs": {"type": "array", "items": {"type": "string"}},
+    "preferred_outputs": {"type": "array", "items": {"type": "string"}},
+    "unavailable_modalities": {"type": "array", "items": {"type": "string"}},
+    "needs": {"type": "object"},
+    "preferences": {"type": "array", "items": {"$ref": "#/$defs/preference"}},
+    "device_associations": {"type": "array", "items": {"type": "object"}},
+    "situational_overrides": {"type": "array", "items": {"$ref": "#/$defs/override"}},
+    "updated_at": {"type": "string", "format": "date-time"}
+  },
+  "$defs": {
+    "preference": {
+      "type": "object", "additionalProperties": false,
+      "required": ["preference_id", "key", "value", "origin", "state", "confidence", "provenance", "created_at"],
+      "properties": {
+        "preference_id": {"type": "string", "minLength": 1},
+        "key": {"type": "string", "minLength": 1},
+        "value": {},
+        "origin": {"enum": ["explicit", "observed", "inferred", "migrated"]},
+        "state": {"enum": ["proposed", "approved", "rejected"]},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "provenance": {"type": "string", "minLength": 1},
+        "created_at": {"type": "string", "format": "date-time"},
+        "expires_at": {"type": ["string", "null"], "format": "date-time"}
+      }
+    },
+    "override": {
+      "type": "object", "additionalProperties": false,
+      "required": ["override_id", "key", "value", "reason", "created_at", "expires_at"],
+      "properties": {
+        "override_id": {"type": "string"},
+        "key": {"type": "string"},
+        "value": {},
+        "reason": {"type": "string"},
+        "created_at": {"type": "string", "format": "date-time"},
+        "expires_at": {"type": "string", "format": "date-time"}
+      }
+    }
+  }
+}
+
