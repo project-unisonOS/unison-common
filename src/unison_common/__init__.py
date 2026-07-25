@@ -165,20 +165,10 @@ from .contracts.v1 import (  # noqa: E402,F401
     ExpressionContext,
     ExpressionPlan,
     ExpressionPlanRequest,
-    InteractionProfile,
     InteractionSession,
     ModalityCapability,
     PendingConfirmation,
-    ProfilePreference,
-    SemanticAction,
-    SemanticExperience,
-    SemanticExpression,
-    SemanticNode,
-    SemanticNodeKind,
     SemanticObservation,
-    SemanticProvenance,
-    SemanticRelationship,
-    SituationalOverride,
 )
 from .trace_artifacts import TraceRecorder, TraceSpanStatus  # noqa: E402,F401
 from .phase1_trace import Phase1NdjsonTrace, sha256_text  # noqa: E402
