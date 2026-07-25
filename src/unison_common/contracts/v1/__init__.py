@@ -4,6 +4,20 @@ from .actions import ActionEnvelope, ActionResult, PolicyDecision
 from .context import ContextSnapshot, ContextWriteBehindBatch
 from .events import EventGraphAppend, EventGraphEvent, EventGraphQuery, InputEventEnvelope, RendererEventEnvelope
 from .intent import Intent, IntentSession, Plan, PlannerOutput, RouterOutput
+from .life_operations import (
+    AttentionItem,
+    Brief,
+    Connection,
+    DerivedRecord,
+    DomainPackage,
+    ExtractedField,
+    ImportSession,
+    LifeOperationDomain,
+    ProvenanceRegion,
+    SourceObject,
+    SyncReceipt,
+    authorize_life_operation,
+)
 from .rom import ResponseObjectModel, RomBlock, RomCard, RomText
 from .speechio import (
     AsrProfile,
@@ -28,6 +42,18 @@ __all__ = [
     "InputEventEnvelope",
     "Intent",
     "IntentSession",
+    "AttentionItem",
+    "Brief",
+    "Connection",
+    "DerivedRecord",
+    "DomainPackage",
+    "ExtractedField",
+    "ImportSession",
+    "LifeOperationDomain",
+    "ProvenanceRegion",
+    "SourceObject",
+    "SyncReceipt",
+    "authorize_life_operation",
     "Plan",
     "PlannerOutput",
     "PolicyDecision",
