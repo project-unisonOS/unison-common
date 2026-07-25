@@ -104,5 +104,6 @@ class SemanticExpression(StrictContract):
     segments: list[dict[str, Any]] = Field(default_factory=list)
     action_ids: list[str] = Field(default_factory=list)
     required_node_ids: list[str] = Field(default_factory=list)
+    action_risk: dict[str, Literal["low", "medium", "high", "critical"]] = Field(default_factory=dict)
+    provenance_source_ids: list[str] = Field(default_factory=list)
     fallback: str | None = None
-

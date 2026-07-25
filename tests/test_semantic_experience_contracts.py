@@ -8,6 +8,7 @@ from unison_common import (
     ProfilePreference,
     SemanticAction,
     SemanticExperience,
+    SemanticExpression,
     SemanticNode,
     SemanticNodeKind,
     SemanticRelationship,
@@ -52,3 +53,12 @@ def test_interaction_profile_requires_inferred_approval_and_expires_overrides():
     )
     assert profile.effective_preferences(now)["detail"] == "brief"
     assert profile.effective_preferences(now + timedelta(minutes=6))["detail"] == "normal"
+
+
+def test_expression_carries_risk_and_provenance_for_equivalence():
+    expression = SemanticExpression(
+        experience_id="e", modality="conversation", summary="Ready", action_ids=["send"],
+        action_risk={"send": "high"}, provenance_source_ids=["document:1"],
+    )
+    assert expression.action_risk == {"send": "high"}
+    assert expression.provenance_source_ids == ["document:1"]
