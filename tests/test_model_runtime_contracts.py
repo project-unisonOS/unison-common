@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from unison_common import ModelManifest, ModelSemanticProposal, ModelTaskRequirement
+from unison_common import ModelManifest, ModelSemanticProposal, ModelTaskRequirement, SignedModelManifest
 
 
 BASE = {
@@ -28,3 +28,20 @@ def test_model_proposal_requires_provenance_and_is_always_untrusted():
         ModelSemanticProposal(operation_id="o", model_id="m", model_version="1", source_state_versions={}, provenance=[])
     with pytest.raises(ValidationError):
         ModelSemanticProposal(operation_id="o", model_id="m", model_version="1", source_state_versions={}, provenance=[{"source_id": "s", "source_type": "document"}], untrusted=False)
+
+
+def test_signed_manifest_accepts_ed25519_without_weakening_legacy_hmac_shape():
+    manifest = ModelManifest.model_validate(BASE)
+    assert SignedModelManifest(
+        manifest=manifest,
+        key_id="release-2026",
+        algorithm="ed25519",
+        signature="a" * 128,
+    ).algorithm == "ed25519"
+    with pytest.raises(ValidationError):
+        SignedModelManifest(
+            manifest=manifest,
+            key_id="release-2026",
+            algorithm="ed25519",
+            signature="a" * 64,
+        )
