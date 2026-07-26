@@ -176,6 +176,12 @@ from .contracts.v1 import (  # noqa: E402,F401
     ModelTask,
     ModelTaskRequirement,
     SignedModelManifest,
+    GoldenSemanticJourney,
+    ModelCompatibilityMatrix,
+    ModelDeployment,
+    ModelEvaluationResult,
+    ModelHardwareQualification,
+    ModelHealthSignal,
 )
 from .trace_artifacts import TraceRecorder, TraceSpanStatus  # noqa: E402,F401
 from .phase1_trace import Phase1NdjsonTrace, sha256_text  # noqa: E402

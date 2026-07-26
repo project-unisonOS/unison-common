@@ -39,6 +39,10 @@ from .model_runtime import (
     ModelHardwareRequirement, ModelManifest, ModelRouteDecision, ModelSemanticProposal,
     ModelTask, ModelTaskRequirement, SignedModelManifest,
 )
+from .model_lifecycle import (
+    GoldenSemanticJourney, ModelCompatibilityMatrix, ModelDeployment,
+    ModelEvaluationResult, ModelHardwareQualification, ModelHealthSignal,
+)
 from .semantic_runtime import (
     AuthenticatedTarget, EquivalenceFinding, EquivalenceReport, ExpressionContext,
     ExpressionPlan, ExpressionPlanRequest, InteractionSession, ModalityCapability,
@@ -110,6 +114,12 @@ __all__ = [
     "ModelTask",
     "ModelTaskRequirement",
     "SignedModelManifest",
+    "GoldenSemanticJourney",
+    "ModelCompatibilityMatrix",
+    "ModelDeployment",
+    "ModelEvaluationResult",
+    "ModelHardwareQualification",
+    "ModelHealthSignal",
     "AuthenticatedTarget",
     "EquivalenceFinding",
     "EquivalenceReport",
