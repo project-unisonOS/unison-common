@@ -76,8 +76,15 @@ class SignedModelManifest(StrictContract):
     schema_version: Literal["signed-model-manifest.v1"] = "signed-model-manifest.v1"
     manifest: ModelManifest
     key_id: str
-    algorithm: Literal["hmac-sha256"] = "hmac-sha256"
-    signature: str = Field(pattern=r"^[a-f0-9]{64}$")
+    algorithm: Literal["hmac-sha256", "ed25519"] = "hmac-sha256"
+    signature: str = Field(pattern=r"^(?:[a-f0-9]{64}|[a-f0-9]{128})$")
+
+    @model_validator(mode="after")
+    def signature_matches_algorithm(self) -> "SignedModelManifest":
+        expected_length = 64 if self.algorithm == "hmac-sha256" else 128
+        if len(self.signature) != expected_length:
+            raise ValueError(f"{self.algorithm} signature must contain {expected_length} lowercase hex characters")
+        return self
 
 
 class ModelRouteDecision(StrictContract):
