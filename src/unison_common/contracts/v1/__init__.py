@@ -59,6 +59,21 @@ from .speechio import (
     TranscriptEvent,
 )
 from .trace import TraceEvent, TraceSpan
+from .shared_incident import (
+    EvidenceRecord,
+    EvidenceState,
+    HouseholdEquipment,
+    HouseholdIncident,
+    IncidentAssignment,
+    IncidentState,
+    IncidentTimelineEvent,
+    KnowledgeProcedure,
+    OfflineKnowledgePack,
+    ResolutionAttempt,
+    ResolutionBudget,
+    SensorObservation,
+    StructuralFingerprint,
+)
 
 __all__ = [
     "ActionEnvelope",
@@ -141,4 +156,17 @@ __all__ = [
     "TranscriptEvent",
     "TraceEvent",
     "TraceSpan",
+    "EvidenceRecord",
+    "EvidenceState",
+    "HouseholdEquipment",
+    "HouseholdIncident",
+    "IncidentAssignment",
+    "IncidentState",
+    "IncidentTimelineEvent",
+    "KnowledgeProcedure",
+    "OfflineKnowledgePack",
+    "ResolutionAttempt",
+    "ResolutionBudget",
+    "SensorObservation",
+    "StructuralFingerprint",
 ]
