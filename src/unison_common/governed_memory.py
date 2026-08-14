@@ -13,6 +13,7 @@ from .governed_context import utc_now
 
 DOMAIN_PATTERN = re.compile(r"^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$")
 FOUNDATION_DOMAINS = ("core-private", "health", "financial", "household-shared")
+TaxonomyLevel = Literal["tag", "subdomain", "security-domain"]
 
 
 class MemoryContract(BaseModel):
@@ -41,6 +42,88 @@ class DataDomainDefinition(MemoryContract):
 
     _domain = field_validator("domain_id")(validate_domain_id)
     _parent = field_validator("parent_domain_id")(lambda value: validate_domain_id(value) if value else value)
+
+
+class TaxonomyUsageSignal(MemoryContract):
+    """Content-free evidence that a person's vocabulary may need to evolve."""
+
+    contract_version: Literal["unison.memory.v1"] = "unison.memory.v1"
+    signal_id: str
+    candidate_domain_id: str
+    current_domain_ids: tuple[str, ...] = ()
+    signal_type: Literal[
+        "repeated-request", "classification-correction", "distinct-audience",
+        "policy-friction", "retention-friction", "sharing-friction",
+    ]
+    suggested_level: TaxonomyLevel
+    observed_at: datetime = Field(default_factory=utc_now)
+    source_reference: str | None = None
+
+    _candidate = field_validator("candidate_domain_id")(validate_domain_id)
+
+    @field_validator("current_domain_ids")
+    @classmethod
+    def current_domains_are_valid(cls, values: tuple[str, ...]) -> tuple[str, ...]:
+        return tuple(validate_domain_id(value) for value in values)
+
+
+class TaxonomyProposal(MemoryContract):
+    contract_version: Literal["unison.memory.v1"] = "unison.memory.v1"
+    proposal_id: str
+    candidate: DataDomainDefinition
+    proposed_level: TaxonomyLevel
+    evidence_count: int = Field(ge=1)
+    distinct_days: int = Field(ge=1)
+    evidence_types: tuple[str, ...]
+    rationale: str
+    benefits: tuple[str, ...]
+    affected_record_ids: tuple[str, ...] = ()
+    status: Literal["pending", "approved", "declined", "deferred", "withdrawn"] = "pending"
+    requires_explicit_approval: bool = True
+    created_at: datetime = Field(default_factory=utc_now)
+    cooldown_until: datetime | None = None
+
+    @model_validator(mode="after")
+    def remains_advisory(self) -> "TaxonomyProposal":
+        if not self.requires_explicit_approval:
+            raise ValueError("taxonomy proposals must require explicit approval")
+        if self.candidate.status != "proposed":
+            raise ValueError("proposal candidates cannot already be active")
+        return self
+
+
+class TaxonomyDecision(MemoryContract):
+    contract_version: Literal["unison.memory.v1"] = "unison.memory.v1"
+    decision_id: str
+    proposal_id: str
+    decision: Literal["approve", "decline", "defer"]
+    migration_scope: Literal["none", "selected", "all"] = "none"
+    selected_record_ids: tuple[str, ...] = ()
+    explicit_confirmation: bool = False
+    reason: str | None = None
+    decided_at: datetime = Field(default_factory=utc_now)
+
+    @model_validator(mode="after")
+    def approval_is_explicit_and_scoped(self) -> "TaxonomyDecision":
+        if self.decision == "approve" and not self.explicit_confirmation:
+            raise ValueError("taxonomy activation requires explicit confirmation")
+        if self.migration_scope == "selected" and not self.selected_record_ids:
+            raise ValueError("selected migration requires record IDs")
+        if self.decision != "approve" and self.migration_scope != "none":
+            raise ValueError("only approval may request migration")
+        return self
+
+
+class TaxonomyActivationReceipt(MemoryContract):
+    contract_version: Literal["unison.memory.v1"] = "unison.memory.v1"
+    receipt_id: str
+    proposal_id: str
+    decision_id: str
+    domain: DataDomainDefinition
+    migration_scope: Literal["none", "selected", "all"] = "none"
+    migration_status: Literal["not-started", "partial", "complete"] = "not-started"
+    migrated_record_ids: tuple[str, ...] = ()
+    activated_at: datetime = Field(default_factory=utc_now)
 
 
 class AlgorithmProvenance(MemoryContract):
@@ -113,5 +196,6 @@ class AuthorizedContextPacket(MemoryContract):
 __all__ = [
     "AlgorithmProvenance", "AuthorizedContextPacket", "DataDomainDefinition",
     "DerivedViewDescriptor", "DerivedViewInvalidationReceipt", "FOUNDATION_DOMAINS",
-    "MemoryRetrievalRequest", "validate_domain_id",
+    "MemoryRetrievalRequest", "TaxonomyActivationReceipt", "TaxonomyDecision",
+    "TaxonomyLevel", "TaxonomyProposal", "TaxonomyUsageSignal", "validate_domain_id",
 ]

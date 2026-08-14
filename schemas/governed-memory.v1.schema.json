@@ -7,7 +7,11 @@
     {"$ref": "#/$defs/retrieval"},
     {"$ref": "#/$defs/derivedView"},
     {"$ref": "#/$defs/invalidationReceipt"},
-    {"$ref": "#/$defs/contextPacket"}
+    {"$ref": "#/$defs/contextPacket"},
+    {"$ref": "#/$defs/taxonomySignal"},
+    {"$ref": "#/$defs/taxonomyProposal"},
+    {"$ref": "#/$defs/taxonomyDecision"},
+    {"$ref": "#/$defs/taxonomyActivationReceipt"}
   ],
   "$defs": {
     "domainId": {"type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"},
@@ -64,6 +68,54 @@
         "source_revision": {"type": "integer", "minimum": 1},
         "reason": {"enum": ["correction", "deletion", "retention-expiry", "membership-revocation", "key-rotation"]},
         "invalidated_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "taxonomyLevel": {"enum": ["tag", "subdomain", "security-domain"]},
+    "taxonomySignal": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "signal_id", "candidate_domain_id", "current_domain_ids", "signal_type", "suggested_level", "observed_at"],
+      "properties": {
+        "contract_version": {"const": "unison.memory.v1"}, "signal_id": {"type": "string"},
+        "candidate_domain_id": {"$ref": "#/$defs/domainId"},
+        "current_domain_ids": {"type": "array", "items": {"$ref": "#/$defs/domainId"}},
+        "signal_type": {"enum": ["repeated-request", "classification-correction", "distinct-audience", "policy-friction", "retention-friction", "sharing-friction"]},
+        "suggested_level": {"$ref": "#/$defs/taxonomyLevel"},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "source_reference": {"type": ["string", "null"]}
+      }
+    },
+    "taxonomyProposal": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "proposal_id", "candidate", "proposed_level", "evidence_count", "distinct_days", "evidence_types", "rationale", "benefits", "affected_record_ids", "status", "requires_explicit_approval", "created_at"],
+      "properties": {
+        "contract_version": {"const": "unison.memory.v1"}, "proposal_id": {"type": "string"},
+        "candidate": {"$ref": "#/$defs/dataDomain"}, "proposed_level": {"$ref": "#/$defs/taxonomyLevel"},
+        "evidence_count": {"type": "integer", "minimum": 1}, "distinct_days": {"type": "integer", "minimum": 1},
+        "evidence_types": {"type": "array", "items": {"type": "string"}}, "rationale": {"type": "string"},
+        "benefits": {"type": "array", "items": {"type": "string"}}, "affected_record_ids": {"type": "array", "items": {"type": "string"}},
+        "status": {"enum": ["pending", "approved", "declined", "deferred", "withdrawn"]},
+        "requires_explicit_approval": {"const": true}, "created_at": {"type": "string", "format": "date-time"},
+        "cooldown_until": {"type": ["string", "null"], "format": "date-time"}
+      }
+    },
+    "taxonomyDecision": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "decision_id", "proposal_id", "decision", "migration_scope", "selected_record_ids", "explicit_confirmation", "decided_at"],
+      "properties": {
+        "contract_version": {"const": "unison.memory.v1"}, "decision_id": {"type": "string"}, "proposal_id": {"type": "string"},
+        "decision": {"enum": ["approve", "decline", "defer"]}, "migration_scope": {"enum": ["none", "selected", "all"]},
+        "selected_record_ids": {"type": "array", "items": {"type": "string"}}, "explicit_confirmation": {"type": "boolean"},
+        "reason": {"type": ["string", "null"]}, "decided_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "taxonomyActivationReceipt": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "receipt_id", "proposal_id", "decision_id", "domain", "migration_scope", "migration_status", "migrated_record_ids", "activated_at"],
+      "properties": {
+        "contract_version": {"const": "unison.memory.v1"}, "receipt_id": {"type": "string"}, "proposal_id": {"type": "string"},
+        "decision_id": {"type": "string"}, "domain": {"$ref": "#/$defs/dataDomain"},
+        "migration_scope": {"enum": ["none", "selected", "all"]}, "migration_status": {"enum": ["not-started", "partial", "complete"]},
+        "migrated_record_ids": {"type": "array", "items": {"type": "string"}}, "activated_at": {"type": "string", "format": "date-time"}
       }
     },
     "contextPacket": {

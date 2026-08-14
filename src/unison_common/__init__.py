@@ -294,6 +294,10 @@ from .governed_memory import (
     DerivedViewInvalidationReceipt,
     FOUNDATION_DOMAINS,
     MemoryRetrievalRequest,
+    TaxonomyActivationReceipt,
+    TaxonomyDecision,
+    TaxonomyProposal,
+    TaxonomyUsageSignal,
 )
 
 from .backup import (
@@ -494,6 +498,10 @@ __all__ = [
     "DerivedViewInvalidationReceipt",
     "FOUNDATION_DOMAINS",
     "MemoryRetrievalRequest",
+    "TaxonomyActivationReceipt",
+    "TaxonomyDecision",
+    "TaxonomyProposal",
+    "TaxonomyUsageSignal",
     "BACKUP_FORMAT_VERSION",
     "BackendCapabilities",
     "BackupCrypto",
