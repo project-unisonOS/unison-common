@@ -68,9 +68,12 @@
     "governance": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["sensitivity", "purposes", "audiences", "allow_inference", "allow_action", "allow_disclosure", "allow_backup", "allow_sync"],
+      "required": ["sensitivity", "data_domains", "key_domain", "retention_class", "purposes", "audiences", "allow_inference", "allow_action", "allow_disclosure", "allow_backup", "allow_sync"],
       "properties": {
         "sensitivity": {"type": "string"},
+        "data_domains": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"}},
+        "key_domain": {"type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"},
+        "retention_class": {"type": "string"},
         "purposes": {"type": "array", "items": {"type": "string"}},
         "audiences": {"type": "array", "items": {"type": "string"}},
         "allow_inference": {"type": "boolean"},

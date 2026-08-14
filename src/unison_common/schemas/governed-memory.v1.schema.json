@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-unisonos.github.io/schemas/governed-memory.v1.schema.json",
+  "title": "Unison governed memory v1",
+  "oneOf": [
+    {"$ref": "#/$defs/dataDomain"},
+    {"$ref": "#/$defs/retrieval"},
+    {"$ref": "#/$defs/derivedView"},
+    {"$ref": "#/$defs/invalidationReceipt"},
+    {"$ref": "#/$defs/contextPacket"}
+  ],
+  "$defs": {
+    "domainId": {"type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"},
+    "algorithm": {
+      "type": "object", "additionalProperties": false,
+      "required": ["algorithm_id", "algorithm_version"],
+      "properties": {
+        "algorithm_id": {"type": "string"}, "algorithm_version": {"type": "string"},
+        "model_id": {"type": ["string", "null"]}, "model_revision": {"type": ["string", "null"]}
+      }
+    },
+    "dataDomain": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "domain_id", "display_name", "description", "origin", "status", "separate_key_required", "created_at"],
+      "properties": {
+        "contract_version": {"const": "unison.memory.v1"}, "domain_id": {"$ref": "#/$defs/domainId"},
+        "display_name": {"type": "string"}, "description": {"type": "string"},
+        "parent_domain_id": {"oneOf": [{"$ref": "#/$defs/domainId"}, {"type": "null"}]},
+        "origin": {"enum": ["system", "person", "usage", "update"]},
+        "status": {"enum": ["proposed", "active", "deprecated"]},
+        "separate_key_required": {"type": "boolean"}, "created_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "retrieval": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "space_ids", "data_domains", "purpose", "query", "token_budget", "audience", "allow_remote"],
+      "properties": {
+        "contract_version": {"const": "unison.memory.v1"},
+        "space_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "data_domains": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/domainId"}},
+        "purpose": {"type": "string", "minLength": 1}, "query": {"type": "string"},
+        "token_budget": {"type": "integer", "minimum": 1, "maximum": 131072},
+        "audience": {"type": "array", "items": {"type": "string"}}, "allow_remote": {"type": "boolean"}
+      }
+    },
+    "derivedView": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "view_id", "view_kind", "source_record_id", "source_revision", "space_id", "data_domains", "index_namespace", "algorithm", "created_at"],
+      "properties": {
+        "contract_version": {"const": "unison.memory.v1"}, "view_id": {"type": "string"},
+        "view_kind": {"enum": ["embedding", "summary", "cache", "graph-edge"]},
+        "source_record_id": {"type": "string"}, "source_revision": {"type": "integer", "minimum": 1},
+        "space_id": {"type": "string"}, "data_domains": {"type": "array", "items": {"$ref": "#/$defs/domainId"}},
+        "index_namespace": {"type": "string"}, "algorithm": {"$ref": "#/$defs/algorithm"},
+        "created_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "invalidationReceipt": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "receipt_id", "view_id", "source_record_id", "source_revision", "reason", "invalidated_at"],
+      "properties": {
+        "contract_version": {"const": "unison.memory.v1"}, "receipt_id": {"type": "string"},
+        "view_id": {"type": "string"}, "source_record_id": {"type": "string"},
+        "source_revision": {"type": "integer", "minimum": 1},
+        "reason": {"enum": ["correction", "deletion", "retention-expiry", "membership-revocation", "key-rotation"]},
+        "invalidated_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "contextPacket": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "purpose", "space_ids", "data_domains", "token_budget", "records", "citations", "contains_inferences", "disclosure_allowed", "remote_allowed"],
+      "properties": {
+        "contract_version": {"const": "unison.memory.v1"}, "purpose": {"type": "string"},
+        "space_ids": {"type": "array", "items": {"type": "string"}},
+        "data_domains": {"type": "array", "items": {"$ref": "#/$defs/domainId"}},
+        "token_budget": {"type": "integer"}, "records": {"type": "array", "items": {"type": "object"}},
+        "citations": {"type": "array", "items": {"type": "string"}},
+        "contains_inferences": {"type": "boolean"}, "disclosure_allowed": {"type": "boolean"},
+        "remote_allowed": {"type": "boolean"}
+      }
+    }
+  }
+}
