@@ -29,6 +29,9 @@ def test_schema_accepts_restrictive_memory_record():
             "relationship_ids": [],
             "governance": {
                 "sensitivity": "private",
+                "data_domains": ["core-private"],
+                "key_domain": "core-private",
+                "retention_class": "person-controlled",
                 "purposes": [],
                 "audiences": [],
                 "allow_inference": False,

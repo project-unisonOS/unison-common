@@ -286,6 +286,16 @@ from .governed_context import (
     SpaceMembership,
 )
 
+from .governed_memory import (
+    AlgorithmProvenance,
+    AuthorizedContextPacket,
+    DataDomainDefinition,
+    DerivedViewDescriptor,
+    DerivedViewInvalidationReceipt,
+    FOUNDATION_DOMAINS,
+    MemoryRetrievalRequest,
+)
+
 from .backup import (
     FORMAT_VERSION as BACKUP_FORMAT_VERSION,
     BackendCapabilities,
@@ -477,6 +487,13 @@ __all__ = [
     "SemanticPrivacyState",
     "SpaceKind",
     "SpaceMembership",
+    "AlgorithmProvenance",
+    "AuthorizedContextPacket",
+    "DataDomainDefinition",
+    "DerivedViewDescriptor",
+    "DerivedViewInvalidationReceipt",
+    "FOUNDATION_DOMAINS",
+    "MemoryRetrievalRequest",
     "BACKUP_FORMAT_VERSION",
     "BackendCapabilities",
     "BackupCrypto",

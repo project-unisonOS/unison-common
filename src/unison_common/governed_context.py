@@ -106,6 +106,9 @@ class Relationship(GovernedModel):
 
 class MemoryGovernance(GovernedModel):
     sensitivity: str = "private"
+    data_domains: tuple[str, ...] = ("core-private",)
+    key_domain: str = "core-private"
+    retention_class: str = "person-controlled"
     purposes: tuple[str, ...] = ()
     audiences: tuple[str, ...] = ()
     allow_inference: bool = False
@@ -114,6 +117,18 @@ class MemoryGovernance(GovernedModel):
     allow_backup: bool = False
     allow_sync: bool = False
     retention_until: datetime | None = None
+
+    @model_validator(mode="after")
+    def validate_domains(self) -> "MemoryGovernance":
+        from .governed_memory import validate_domain_id
+
+        domains = tuple(validate_domain_id(value) for value in self.data_domains)
+        key_domain = validate_domain_id(self.key_domain)
+        if not domains or key_domain not in domains:
+            raise ValueError("key_domain must identify one of the record data domains")
+        object.__setattr__(self, "data_domains", domains)
+        object.__setattr__(self, "key_domain", key_domain)
+        return self
 
 
 class MemoryRecord(GovernedModel):
