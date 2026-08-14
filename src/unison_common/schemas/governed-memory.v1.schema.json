@@ -11,7 +11,13 @@
     {"$ref": "#/$defs/taxonomySignal"},
     {"$ref": "#/$defs/taxonomyProposal"},
     {"$ref": "#/$defs/taxonomyDecision"},
-    {"$ref": "#/$defs/taxonomyActivationReceipt"}
+    {"$ref": "#/$defs/taxonomyActivationReceipt"},
+    {"$ref": "#/$defs/taxonomyProposalPreview"},
+    {"$ref": "#/$defs/taxonomySecurityReview"},
+    {"$ref": "#/$defs/taxonomyMigrationPreview"},
+    {"$ref": "#/$defs/taxonomyMigrationCommand"},
+    {"$ref": "#/$defs/taxonomyMigrationReceipt"},
+    {"$ref": "#/$defs/taxonomyRollbackReceipt"}
   ],
   "$defs": {
     "domainId": {"type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"},
@@ -117,6 +123,54 @@
         "migration_scope": {"enum": ["none", "selected", "all"]}, "migration_status": {"enum": ["not-started", "partial", "complete"]},
         "migrated_record_ids": {"type": "array", "items": {"type": "string"}}, "activated_at": {"type": "string", "format": "date-time"}
       }
+    },
+    "taxonomyProposalPreview": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "proposal_id", "prompt", "summary", "why_now", "would_change", "would_not_change", "choices", "requires_security_review", "generated_at"],
+      "properties": {
+        "contract_version": {"const": "unison.memory.v1"}, "proposal_id": {"type": "string"}, "prompt": {"type": "string"}, "summary": {"type": "string"},
+        "why_now": {"type": "array", "items": {"type": "string"}}, "would_change": {"type": "array", "items": {"type": "string"}},
+        "would_not_change": {"type": "array", "items": {"type": "string"}}, "choices": {"type": "array", "items": {"enum": ["approve", "defer", "decline"]}},
+        "requires_security_review": {"type": "boolean"}, "generated_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "taxonomySecurityReview": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "review_id", "proposal_id", "decision", "policy_version", "separate_key_boundary", "retention_reviewed", "sharing_reviewed", "disclosure_reviewed", "rationale", "reviewed_at"],
+      "properties": {
+        "contract_version": {"const": "unison.memory.v1"}, "review_id": {"type": "string"}, "proposal_id": {"type": "string"}, "decision": {"enum": ["approve", "deny"]},
+        "policy_version": {"type": "string"}, "separate_key_boundary": {"type": "boolean"}, "retention_reviewed": {"type": "boolean"},
+        "sharing_reviewed": {"type": "boolean"}, "disclosure_reviewed": {"type": "boolean"}, "rationale": {"type": "string"}, "reviewed_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "taxonomyMigrationPreview": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "preview_id", "proposal_id", "domain_id", "source_domain_ids", "record_revisions", "classification_change", "key_boundary_change", "reversible", "created_at", "expires_at", "confirmation_digest"],
+      "properties": {
+        "contract_version": {"const": "unison.memory.v1"}, "preview_id": {"type": "string"}, "proposal_id": {"type": "string"}, "domain_id": {"$ref": "#/$defs/domainId"},
+        "source_domain_ids": {"type": "array", "items": {"$ref": "#/$defs/domainId"}}, "record_revisions": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 1}},
+        "classification_change": {"type": "string"}, "key_boundary_change": {"type": "string"}, "reversible": {"const": true},
+        "created_at": {"type": "string", "format": "date-time"}, "expires_at": {"type": "string", "format": "date-time"}, "confirmation_digest": {"type": "string"}
+      }
+    },
+    "taxonomyMigrationCommand": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "preview_id", "confirmation_digest", "explicit_confirmation"],
+      "properties": {"contract_version": {"const": "unison.memory.v1"}, "preview_id": {"type": "string"}, "confirmation_digest": {"type": "string"}, "explicit_confirmation": {"const": true}}
+    },
+    "taxonomyMigrationReceipt": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "migration_id", "preview_id", "proposal_id", "domain_id", "migrated_record_ids", "status", "rollback_until", "completed_at"],
+      "properties": {
+        "contract_version": {"const": "unison.memory.v1"}, "migration_id": {"type": "string"}, "preview_id": {"type": "string"}, "proposal_id": {"type": "string"}, "domain_id": {"$ref": "#/$defs/domainId"},
+        "migrated_record_ids": {"type": "array", "items": {"type": "string"}}, "status": {"enum": ["complete", "rolled-back"]},
+        "rollback_until": {"type": "string", "format": "date-time"}, "completed_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "taxonomyRollbackReceipt": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "rollback_id", "migration_id", "restored_record_ids", "rolled_back_at"],
+      "properties": {"contract_version": {"const": "unison.memory.v1"}, "rollback_id": {"type": "string"}, "migration_id": {"type": "string"}, "restored_record_ids": {"type": "array", "items": {"type": "string"}}, "rolled_back_at": {"type": "string", "format": "date-time"}}
     },
     "contextPacket": {
       "type": "object", "additionalProperties": false,

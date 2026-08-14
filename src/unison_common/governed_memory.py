@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from hashlib import sha256
 from datetime import datetime
 from typing import Literal
 
@@ -126,6 +127,100 @@ class TaxonomyActivationReceipt(MemoryContract):
     activated_at: datetime = Field(default_factory=utc_now)
 
 
+class TaxonomyProposalPreview(MemoryContract):
+    """Modality-neutral copy for a person-facing taxonomy decision."""
+
+    contract_version: Literal["unison.memory.v1"] = "unison.memory.v1"
+    proposal_id: str
+    prompt: str
+    summary: str
+    why_now: tuple[str, ...]
+    would_change: tuple[str, ...]
+    would_not_change: tuple[str, ...]
+    choices: tuple[Literal["approve", "defer", "decline"], ...] = ("approve", "defer", "decline")
+    requires_security_review: bool
+    generated_at: datetime = Field(default_factory=utc_now)
+
+
+class TaxonomySecurityReview(MemoryContract):
+    contract_version: Literal["unison.memory.v1"] = "unison.memory.v1"
+    review_id: str
+    proposal_id: str
+    decision: Literal["approve", "deny"]
+    policy_version: str
+    separate_key_boundary: bool
+    retention_reviewed: bool
+    sharing_reviewed: bool
+    disclosure_reviewed: bool
+    rationale: str
+    reviewed_at: datetime = Field(default_factory=utc_now)
+
+    @model_validator(mode="after")
+    def approved_review_covers_every_boundary(self) -> "TaxonomySecurityReview":
+        if self.decision == "approve" and not all((
+            self.separate_key_boundary, self.retention_reviewed,
+            self.sharing_reviewed, self.disclosure_reviewed,
+        )):
+            raise ValueError("security-domain approval must review every policy boundary")
+        return self
+
+
+class TaxonomyMigrationPreview(MemoryContract):
+    contract_version: Literal["unison.memory.v1"] = "unison.memory.v1"
+    preview_id: str
+    proposal_id: str
+    domain_id: str
+    source_domain_ids: tuple[str, ...]
+    record_revisions: dict[str, int]
+    classification_change: str
+    key_boundary_change: str
+    reversible: bool = True
+    created_at: datetime = Field(default_factory=utc_now)
+    expires_at: datetime
+    confirmation_digest: str
+
+    _domain = field_validator("domain_id")(validate_domain_id)
+
+
+class TaxonomyMigrationCommand(MemoryContract):
+    contract_version: Literal["unison.memory.v1"] = "unison.memory.v1"
+    preview_id: str
+    confirmation_digest: str
+    explicit_confirmation: bool
+
+    @model_validator(mode="after")
+    def requires_confirmation(self) -> "TaxonomyMigrationCommand":
+        if not self.explicit_confirmation:
+            raise ValueError("taxonomy migration requires explicit confirmation")
+        return self
+
+
+class TaxonomyMigrationReceipt(MemoryContract):
+    contract_version: Literal["unison.memory.v1"] = "unison.memory.v1"
+    migration_id: str
+    preview_id: str
+    proposal_id: str
+    domain_id: str
+    migrated_record_ids: tuple[str, ...]
+    status: Literal["complete", "rolled-back"] = "complete"
+    rollback_until: datetime
+    completed_at: datetime = Field(default_factory=utc_now)
+
+
+class TaxonomyRollbackReceipt(MemoryContract):
+    contract_version: Literal["unison.memory.v1"] = "unison.memory.v1"
+    rollback_id: str
+    migration_id: str
+    restored_record_ids: tuple[str, ...]
+    rolled_back_at: datetime = Field(default_factory=utc_now)
+
+
+def taxonomy_preview_digest(payload: dict) -> str:
+    """Stable digest used to bind confirmation to the exact content-free preview."""
+    import json
+    return sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
 class AlgorithmProvenance(MemoryContract):
     algorithm_id: str
     algorithm_version: str
@@ -197,5 +292,8 @@ __all__ = [
     "AlgorithmProvenance", "AuthorizedContextPacket", "DataDomainDefinition",
     "DerivedViewDescriptor", "DerivedViewInvalidationReceipt", "FOUNDATION_DOMAINS",
     "MemoryRetrievalRequest", "TaxonomyActivationReceipt", "TaxonomyDecision",
-    "TaxonomyLevel", "TaxonomyProposal", "TaxonomyUsageSignal", "validate_domain_id",
+    "TaxonomyLevel", "TaxonomyMigrationCommand", "TaxonomyMigrationPreview",
+    "TaxonomyMigrationReceipt", "TaxonomyProposal", "TaxonomyProposalPreview",
+    "TaxonomyRollbackReceipt", "TaxonomySecurityReview", "TaxonomyUsageSignal",
+    "taxonomy_preview_digest", "validate_domain_id",
 ]

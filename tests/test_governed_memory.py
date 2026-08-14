@@ -4,7 +4,8 @@ from pydantic import ValidationError
 from unison_common.governed_context import MemoryGovernance
 from unison_common.governed_memory import (
     DataDomainDefinition, MemoryRetrievalRequest, TaxonomyDecision,
-    TaxonomyProposal, TaxonomyUsageSignal,
+    TaxonomyMigrationCommand, TaxonomyProposal, TaxonomySecurityReview,
+    TaxonomyUsageSignal,
 )
 
 
@@ -56,4 +57,18 @@ def test_taxonomy_proposal_is_advisory_and_activation_is_explicit():
     with pytest.raises(ValidationError):
         TaxonomyDecision(
             decision_id="decision-1", proposal_id=proposal.proposal_id, decision="approve",
+        )
+
+
+def test_security_review_and_migration_both_fail_closed():
+    with pytest.raises(ValidationError):
+        TaxonomySecurityReview(
+            review_id="review-1", proposal_id="proposal-1", decision="approve",
+            policy_version="policy-1", separate_key_boundary=True,
+            retention_reviewed=True, sharing_reviewed=False, disclosure_reviewed=True,
+            rationale="incomplete review",
+        )
+    with pytest.raises(ValidationError):
+        TaxonomyMigrationCommand(
+            preview_id="preview-1", confirmation_digest="digest", explicit_confirmation=False,
         )
