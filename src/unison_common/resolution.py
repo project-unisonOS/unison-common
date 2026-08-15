@@ -159,3 +159,87 @@ class ModalityAdapterManifest(ResolutionContract):
         if not self.sem_versions or not self.expression_versions:
             raise ValueError("adapter must declare semantic and expression contracts")
         return self
+
+class PilotEnrollment(ResolutionContract):
+    schema_version: Literal["resolution-pilot-enrollment.v1"] = "resolution-pilot-enrollment.v1"
+    enrollment_id: str
+    owner_person_id: str
+    consent_grant_id: str
+    scopes: tuple[str, ...]
+    retention_days: int = Field(ge=1, le=365)
+    status: Literal["active", "revoked", "deleted"] = "active"
+    telemetry_enabled: bool = False
+    consented_at: datetime = Field(default_factory=utc_now)
+    revoked_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def telemetry_requires_active_consent(self) -> "PilotEnrollment":
+        if not self.scopes or not self.consent_grant_id.strip():
+            raise ValueError("pilot enrollment requires consent and scope")
+        if self.telemetry_enabled and self.status != "active":
+            raise ValueError("pilot telemetry requires active consent")
+        if self.status == "revoked" and self.revoked_at is None:
+            raise ValueError("revoked enrollment requires a timestamp")
+        return self
+
+class PilotReviewDecision(ResolutionContract):
+    schema_version: Literal["resolution-pilot-review.v1"] = "resolution-pilot-review.v1"
+    review_id: str
+    owner_person_id: str
+    reviewer_id: str
+    attempts: int = Field(ge=0)
+    candidate_suggestions: int = Field(ge=0)
+    boundary_incidents: int = Field(ge=0)
+    decision: Literal["continue", "adjust", "pause", "stop"]
+    reason: str
+    reviewed_at: datetime = Field(default_factory=utc_now)
+
+    @model_validator(mode="after")
+    def incidents_stop_or_pause(self) -> "PilotReviewDecision":
+        if self.boundary_incidents and self.decision not in {"pause", "stop"}:
+            raise ValueError("boundary incidents require pause or stop")
+        return self
+
+class HeadlessInteractionSession(ResolutionContract):
+    schema_version: Literal["headless-interaction-session.v1"] = "headless-interaction-session.v1"
+    session_id: str
+    owner_person_id: str
+    client_id: str
+    transport: Literal["local", "lan", "tailscale", "relay"]
+    input_modalities: tuple[str, ...]
+    output_modalities: tuple[str, ...]
+    state: Literal["active", "interrupted", "resumable", "closed", "revoked"] = "active"
+    semantic_focus_id: str | None = None
+    pending_action_ids: tuple[str, ...] = ()
+    reconnect_token_digest: str = Field(pattern=r"^sha256:[a-f0-9]{64}$")
+    expires_at: datetime
+    updated_at: datetime = Field(default_factory=utc_now)
+
+    @model_validator(mode="after")
+    def require_independent_modalities_and_future_expiry(self) -> "HeadlessInteractionSession":
+        if not self.input_modalities or not self.output_modalities:
+            raise ValueError("headless session requires input and output modalities")
+        if self.expires_at <= self.updated_at:
+            raise ValueError("headless session must expire in the future")
+        return self
+
+class CandidateCanaryRecord(ResolutionContract):
+    schema_version: Literal["determinization-canary.v1"] = "determinization-canary.v1"
+    canary_id: str
+    candidate_id: str
+    owner_person_id: str
+    package_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
+    synthetic: bool
+    authority_ids: tuple[str, ...]
+    outcome: Literal["passed", "failed", "revoked", "rolled-back"]
+    prior_route_id: str
+    rollback_receipt_id: str | None = None
+    executed_at: datetime = Field(default_factory=utc_now)
+
+    @model_validator(mode="after")
+    def canary_is_synthetic_and_recoverable(self) -> "CandidateCanaryRecord":
+        if not self.synthetic:
+            raise ValueError("initial candidate canary must be synthetic")
+        if self.outcome == "rolled-back" and not self.rollback_receipt_id:
+            raise ValueError("rollback requires a receipt")
+        return self
