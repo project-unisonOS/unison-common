@@ -332,6 +332,14 @@ from .backup import (
     WrappedKeyReference,
     canonical_json as canonical_backup_json,
 )
+from .resolution import (
+    CandidateTransition,
+    DeterminizationCandidate,
+    ResolutionAttempt,
+    ResolutionBudget,
+    ResolutionReceipt,
+    ResolutionRoute,
+)
 from .workflows import (
     ApprovalRecord,
     FailureRecovery,
@@ -542,6 +550,12 @@ __all__ = [
     "VerificationStatus",
     "WrappedKeyReference",
     "canonical_backup_json",
+    "CandidateTransition",
+    "DeterminizationCandidate",
+    "ResolutionAttempt",
+    "ResolutionBudget",
+    "ResolutionReceipt",
+    "ResolutionRoute",
     "ApprovalRecord",
     "FailureRecovery",
     "OutcomeEvidence",
