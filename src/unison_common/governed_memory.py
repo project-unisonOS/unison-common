@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import base64
+import json
 import re
 from hashlib import sha256
 from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
 from .governed_context import utc_now
 
@@ -165,6 +169,49 @@ class TaxonomySecurityReview(MemoryContract):
         return self
 
 
+class SignedTaxonomyPolicyIssuance(MemoryContract):
+    """Short-lived authorization whose Ed25519 signature proves policy-service origin."""
+
+    contract_version: Literal["unison.memory.v1"] = "unison.memory.v1"
+    issuance_id: str
+    issuer_service: Literal["unison-policy"] = "unison-policy"
+    owner_person_id: str
+    proposal_id: str
+    review: TaxonomySecurityReview
+    issued_at: datetime = Field(default_factory=utc_now)
+    expires_at: datetime
+    key_id: str
+    signature: str = ""
+
+    @model_validator(mode="after")
+    def binds_review_and_lifetime(self) -> "SignedTaxonomyPolicyIssuance":
+        if self.review.proposal_id != self.proposal_id:
+            raise ValueError("policy issuance must bind the reviewed proposal")
+        if self.expires_at <= self.issued_at:
+            raise ValueError("policy issuance must expire after it is issued")
+        return self
+
+    def signing_payload(self) -> bytes:
+        return json.dumps(self.model_dump(mode="json", exclude={"signature"}),
+                          sort_keys=True, separators=(",", ":")).encode()
+
+    def sign(self, private_key: Ed25519PrivateKey) -> "SignedTaxonomyPolicyIssuance":
+        signature = base64.urlsafe_b64encode(private_key.sign(self.signing_payload())).decode()
+        return self.model_copy(update={"signature": signature})
+
+    def verify(self, public_key: Ed25519PublicKey, *, owner_person_id: str,
+               proposal_id: str, now: datetime | None = None) -> TaxonomySecurityReview:
+        if self.owner_person_id != owner_person_id or self.proposal_id != proposal_id:
+            raise ValueError("policy issuance is not bound to this person and proposal")
+        if (now or utc_now()) >= self.expires_at:
+            raise ValueError("policy issuance has expired")
+        try:
+            public_key.verify(base64.urlsafe_b64decode(self.signature), self.signing_payload())
+        except (InvalidSignature, ValueError) as exc:
+            raise ValueError("policy issuance signature is invalid") from exc
+        return self.review
+
+
 class TaxonomyMigrationPreview(MemoryContract):
     contract_version: Literal["unison.memory.v1"] = "unison.memory.v1"
     preview_id: str
@@ -286,7 +333,13 @@ class DerivedViewRebuildJob(MemoryContract):
     target_namespace: str
     state: Literal["pending", "running", "complete", "failed", "cancelled"] = "pending"
     attempts: int = Field(default=0, ge=0)
+    max_attempts: int = Field(default=3, ge=1, le=20)
+    lease_owner: str | None = None
+    lease_expires_at: datetime | None = None
+    last_error: str | None = None
+    cancel_requested: bool = False
     created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
 
 
 class EmbeddingMigrationPlan(MemoryContract):
@@ -324,6 +377,6 @@ __all__ = [
     "MemoryRetrievalRequest", "TaxonomyActivationReceipt", "TaxonomyDecision",
     "TaxonomyLevel", "TaxonomyMigrationCommand", "TaxonomyMigrationPreview",
     "TaxonomyMigrationReceipt", "TaxonomyProposal", "TaxonomyProposalPreview",
-    "TaxonomyRollbackReceipt", "TaxonomySecurityReview", "TaxonomyUsageSignal",
+    "TaxonomyRollbackReceipt", "TaxonomySecurityReview", "SignedTaxonomyPolicyIssuance", "TaxonomyUsageSignal",
     "taxonomy_preview_digest", "validate_domain_id",
 ]
