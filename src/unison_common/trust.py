@@ -6,6 +6,7 @@ import base64
 import hashlib
 import hmac
 import os
+import stat
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -64,6 +65,28 @@ class LocalDevelopmentKeyBroker:
         return self._fernet(key_handle, associated_data).decrypt(ciphertext)
 
 
+class MountedSecretKeyBroker(LocalDevelopmentKeyBroker):
+    """Key broker backed by a root secret mounted from a dedicated secret store.
+
+    This removes production root-key material from environment variables and
+    application databases. Hardware sealing remains the responsibility of the
+    mount provider (TPM/HSM/system credential service).
+    """
+
+    def __init__(self, secret_path: str | Path):
+        path = Path(secret_path)
+        if path.is_symlink() or not path.is_file():
+            raise ValueError("key broker secret must be a regular non-symlink file")
+        mode = stat.S_IMODE(path.stat().st_mode)
+        if os.name != "nt" and mode & 0o077:
+            raise PermissionError("key broker secret must not be accessible by group or others")
+        root_secret = path.read_bytes().strip()
+        if len(root_secret) < 32:
+            raise ValueError("mounted key broker root must contain at least 32 bytes")
+        self.secret_path = path
+        super().__init__(root_secret)
+
+
 def read_secret_setting(name: str, default: str = "") -> str:
     """Read a secret from ``NAME_FILE`` before the legacy direct environment value."""
     file_path = os.getenv(f"{name}_FILE", "").strip()
@@ -72,4 +95,7 @@ def read_secret_setting(name: str, default: str = "") -> str:
     return os.getenv(name, default)
 
 
-__all__ = ["CredentialBroker", "KeyBroker", "LocalDevelopmentKeyBroker", "NamespaceSet", "read_secret_setting"]
+__all__ = [
+    "CredentialBroker", "KeyBroker", "LocalDevelopmentKeyBroker",
+    "MountedSecretKeyBroker", "NamespaceSet", "read_secret_setting",
+]
