@@ -7,6 +7,23 @@ from unison_common.governed_memory import (
     TaxonomyMigrationCommand, TaxonomyProposal, TaxonomySecurityReview,
     TaxonomyUsageSignal,
 )
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from datetime import timedelta
+from unison_common.governed_context import utc_now
+from unison_common.governed_memory import SignedTaxonomyPolicyIssuance, TaxonomySecurityReview
+
+
+def test_policy_issuance_is_signed_person_bound_and_expiring():
+    key = Ed25519PrivateKey.generate()
+    review = TaxonomySecurityReview(review_id="r1", proposal_id="p1", decision="approve",
+        policy_version="2026.08", separate_key_boundary=True, retention_reviewed=True,
+        sharing_reviewed=True, disclosure_reviewed=True, rationale="isolated")
+    issuance = SignedTaxonomyPolicyIssuance(issuance_id="i1", owner_person_id="alice",
+        proposal_id="p1", review=review, expires_at=utc_now() + timedelta(minutes=5),
+        key_id="policy-1").sign(key)
+    assert issuance.verify(key.public_key(), owner_person_id="alice", proposal_id="p1") == review
+    with pytest.raises(ValueError, match="bound"):
+        issuance.verify(key.public_key(), owner_person_id="bob", proposal_id="p1")
 
 
 def test_domains_are_open_vocabulary_and_can_originate_from_usage():
