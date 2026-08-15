@@ -267,7 +267,10 @@ from .principal_middleware import (
     get_current_principal_token,
 )
 
-from .trust import CredentialBroker, KeyBroker, LocalDevelopmentKeyBroker, NamespaceSet, read_secret_setting
+from .trust import (
+    CredentialBroker, KeyBroker, LocalDevelopmentKeyBroker, MountedSecretKeyBroker,
+    NamespaceSet, read_secret_setting,
+)
 
 from .governed_context import (
     Commitment,
@@ -292,6 +295,8 @@ from .governed_memory import (
     DataDomainDefinition,
     DerivedViewDescriptor,
     DerivedViewInvalidationReceipt,
+    DerivedViewRebuildJob,
+    EmbeddingMigrationPlan,
     FOUNDATION_DOMAINS,
     MemoryRetrievalRequest,
     TaxonomyActivationReceipt,
@@ -482,6 +487,7 @@ __all__ = [
     "CredentialBroker",
     "KeyBroker",
     "LocalDevelopmentKeyBroker",
+    "MountedSecretKeyBroker",
     "NamespaceSet",
     "read_secret_setting",
     "Commitment",
@@ -503,6 +509,8 @@ __all__ = [
     "DataDomainDefinition",
     "DerivedViewDescriptor",
     "DerivedViewInvalidationReceipt",
+    "DerivedViewRebuildJob",
+    "EmbeddingMigrationPlan",
     "FOUNDATION_DOMAINS",
     "MemoryRetrievalRequest",
     "TaxonomyActivationReceipt",

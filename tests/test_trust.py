@@ -1,7 +1,7 @@
 import pytest
 from cryptography.fernet import InvalidToken
 
-from unison_common.trust import LocalDevelopmentKeyBroker, read_secret_setting
+from unison_common.trust import LocalDevelopmentKeyBroker, MountedSecretKeyBroker, read_secret_setting
 
 
 def test_per_person_key_handles_cannot_decrypt_each_other():
@@ -38,3 +38,21 @@ def test_secret_file_takes_precedence_over_legacy_environment(tmp_path, monkeypa
     monkeypatch.setenv("EXAMPLE_SECRET", "environment-secret")
     monkeypatch.setenv("EXAMPLE_SECRET_FILE", str(secret_file))
     assert read_secret_setting("EXAMPLE_SECRET") == "file-secret"
+
+
+def test_mounted_secret_key_broker_uses_file_without_exposing_root(tmp_path):
+    secret = tmp_path / "root-key"
+    secret.write_bytes(b"durable-mounted-root-secret-value-32-bytes")
+    secret.chmod(0o600)
+    broker = MountedSecretKeyBroker(secret)
+    ciphertext = broker.encrypt(key_handle="person:alice", plaintext=b"private", associated_data=b"context")
+    assert broker.decrypt(key_handle="person:alice", ciphertext=ciphertext, associated_data=b"context") == b"private"
+    assert not hasattr(broker, "root_secret")
+
+
+def test_mounted_secret_key_broker_rejects_short_secret(tmp_path):
+    secret = tmp_path / "root-key"
+    secret.write_bytes(b"short")
+    secret.chmod(0o600)
+    with pytest.raises(ValueError, match="at least 32 bytes"):
+        MountedSecretKeyBroker(secret)

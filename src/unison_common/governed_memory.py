@@ -275,6 +275,35 @@ class DerivedViewInvalidationReceipt(MemoryContract):
     invalidated_at: datetime = Field(default_factory=utc_now)
 
 
+class DerivedViewRebuildJob(MemoryContract):
+    contract_version: Literal["unison.memory.v1"] = "unison.memory.v1"
+    job_id: str
+    owner_person_id: str
+    source_record_id: str
+    source_revision: int = Field(ge=1)
+    view_kind: Literal["embedding", "summary", "cache", "graph-edge"]
+    target_algorithm: AlgorithmProvenance
+    target_namespace: str
+    state: Literal["pending", "running", "complete", "failed", "cancelled"] = "pending"
+    attempts: int = Field(default=0, ge=0)
+    created_at: datetime = Field(default_factory=utc_now)
+
+
+class EmbeddingMigrationPlan(MemoryContract):
+    contract_version: Literal["unison.memory.v1"] = "unison.memory.v1"
+    migration_id: str
+    owner_person_id: str
+    source_algorithm: AlgorithmProvenance
+    target_algorithm: AlgorithmProvenance
+    source_namespace: str
+    target_namespace: str
+    strategy: Literal["dual-index-rebuild-and-swap"] = "dual-index-rebuild-and-swap"
+    state: Literal["rebuilding", "ready", "cutover", "rolled-back"] = "rebuilding"
+    total_jobs: int = Field(ge=0)
+    completed_jobs: int = Field(default=0, ge=0)
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class AuthorizedContextPacket(MemoryContract):
     contract_version: Literal["unison.memory.v1"] = "unison.memory.v1"
     purpose: str
@@ -290,7 +319,8 @@ class AuthorizedContextPacket(MemoryContract):
 
 __all__ = [
     "AlgorithmProvenance", "AuthorizedContextPacket", "DataDomainDefinition",
-    "DerivedViewDescriptor", "DerivedViewInvalidationReceipt", "FOUNDATION_DOMAINS",
+    "DerivedViewDescriptor", "DerivedViewInvalidationReceipt", "DerivedViewRebuildJob",
+    "EmbeddingMigrationPlan", "FOUNDATION_DOMAINS",
     "MemoryRetrievalRequest", "TaxonomyActivationReceipt", "TaxonomyDecision",
     "TaxonomyLevel", "TaxonomyMigrationCommand", "TaxonomyMigrationPreview",
     "TaxonomyMigrationReceipt", "TaxonomyProposal", "TaxonomyProposalPreview",

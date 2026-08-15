@@ -17,7 +17,9 @@
     {"$ref": "#/$defs/taxonomyMigrationPreview"},
     {"$ref": "#/$defs/taxonomyMigrationCommand"},
     {"$ref": "#/$defs/taxonomyMigrationReceipt"},
-    {"$ref": "#/$defs/taxonomyRollbackReceipt"}
+    {"$ref": "#/$defs/taxonomyRollbackReceipt"},
+    {"$ref": "#/$defs/derivedViewRebuildJob"},
+    {"$ref": "#/$defs/embeddingMigrationPlan"}
   ],
   "$defs": {
     "domainId": {"type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"},
@@ -171,6 +173,27 @@
       "type": "object", "additionalProperties": false,
       "required": ["contract_version", "rollback_id", "migration_id", "restored_record_ids", "rolled_back_at"],
       "properties": {"contract_version": {"const": "unison.memory.v1"}, "rollback_id": {"type": "string"}, "migration_id": {"type": "string"}, "restored_record_ids": {"type": "array", "items": {"type": "string"}}, "rolled_back_at": {"type": "string", "format": "date-time"}}
+    },
+    "derivedViewRebuildJob": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "job_id", "owner_person_id", "source_record_id", "source_revision", "view_kind", "target_algorithm", "target_namespace", "state", "attempts", "created_at"],
+      "properties": {
+        "contract_version": {"const": "unison.memory.v1"}, "job_id": {"type": "string"}, "owner_person_id": {"type": "string"}, "source_record_id": {"type": "string"},
+        "source_revision": {"type": "integer", "minimum": 1}, "view_kind": {"enum": ["embedding", "summary", "cache", "graph-edge"]},
+        "target_algorithm": {"$ref": "#/$defs/algorithm"}, "target_namespace": {"type": "string"},
+        "state": {"enum": ["pending", "running", "complete", "failed", "cancelled"]}, "attempts": {"type": "integer", "minimum": 0}, "created_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "embeddingMigrationPlan": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "migration_id", "owner_person_id", "source_algorithm", "target_algorithm", "source_namespace", "target_namespace", "strategy", "state", "total_jobs", "completed_jobs", "created_at"],
+      "properties": {
+        "contract_version": {"const": "unison.memory.v1"}, "migration_id": {"type": "string"}, "owner_person_id": {"type": "string"},
+        "source_algorithm": {"$ref": "#/$defs/algorithm"}, "target_algorithm": {"$ref": "#/$defs/algorithm"},
+        "source_namespace": {"type": "string"}, "target_namespace": {"type": "string"}, "strategy": {"const": "dual-index-rebuild-and-swap"},
+        "state": {"enum": ["rebuilding", "ready", "cutover", "rolled-back"]}, "total_jobs": {"type": "integer", "minimum": 0},
+        "completed_jobs": {"type": "integer", "minimum": 0}, "created_at": {"type": "string", "format": "date-time"}
+      }
     },
     "contextPacket": {
       "type": "object", "additionalProperties": false,
