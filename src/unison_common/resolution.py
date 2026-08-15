@@ -90,6 +90,8 @@ class DeterminizationCandidate(ResolutionContract):
 
     @model_validator(mode="after")
     def candidates_never_self_authorize(self) -> "DeterminizationCandidate":
+        if len(set(self.evidence_attempt_ids)) < 2:
+            raise ValueError("candidate requires at least two distinct evidence attempts")
         if self.executable and self.state not in {"signed", "canary", "promoted"}:
             raise ValueError("candidate cannot execute before signed review")
         if self.state == "promoted" and not self.executable:
@@ -101,7 +103,7 @@ class CandidateTransition(ResolutionContract):
     from_state: str
     to_state: str
     reviewer_ids: tuple[str, ...] = ()
-    package_digest: str | None = None
+    package_digest: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
     reason: str
     transitioned_at: datetime = Field(default_factory=utc_now)
 
@@ -123,6 +125,7 @@ class ResolutionPilotSignal(ResolutionContract):
     candidate_relevant: bool | None = None
     trust_rating: int | None = Field(default=None, ge=1, le=5)
     privacy_understood: bool | None = None
+    boundary_incident: bool = False
     created_at: datetime = Field(default_factory=utc_now)
 
     @model_validator(mode="after")

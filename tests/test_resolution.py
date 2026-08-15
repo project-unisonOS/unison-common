@@ -41,3 +41,14 @@ def test_modality_adapter_manifest_is_directional_and_sem_bound():
     assert manifest.modality == "sign"
     with pytest.raises(ValueError, match="input or output"):
         ModalityAdapterManifest(**values, input_supported=False, output_supported=False)
+
+def test_candidate_requires_repeated_distinct_evidence():
+    values = dict(candidate_id="c2", scope="person-local", candidate_kind="skill",
+        structural_fingerprint="b" * 64, invariant_steps=("retrieve",),
+        parameter_schema={}, authority_requirements=("person",),
+        privacy_requirements=("local",), modality_requirements=("conversation",),
+        failure_modes=("unavailable",), expected_benefit="repeatability")
+    with pytest.raises(ValueError, match="two distinct"):
+        DeterminizationCandidate(**values, evidence_attempt_ids=("a1",))
+    with pytest.raises(ValueError, match="two distinct"):
+        DeterminizationCandidate(**values, evidence_attempt_ids=("a1", "a1"))
