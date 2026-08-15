@@ -20,3 +20,24 @@ def test_candidate_cannot_self_promote_or_execute():
         DeterminizationCandidate(**values, executable=True)
     with pytest.raises(ValueError, match="explicitly executable"):
         DeterminizationCandidate(**values, state="promoted")
+
+def test_pilot_signal_requires_opt_in_and_consistent_candidate_rating():
+    values = dict(signal_id="signal-1", attempt_id="attempt-1",
+        participant_id="participant-1", usefulness="useful", outcome="complete",
+        elapsed_seconds=10, interaction_turns=1, clarification_count=0,
+        correction_count=0)
+    with pytest.raises(ValueError, match="explicit opt-in"):
+        ResolutionPilotSignal(**values, opted_in=False)
+    with pytest.raises(ValueError, match="candidate relevance"):
+        ResolutionPilotSignal(**values, opted_in=True, candidate_relevant=True)
+
+def test_modality_adapter_manifest_is_directional_and_sem_bound():
+    values = dict(adapter_id="sign-reference", modality="sign",
+        sem_versions=("sem.v1",), expression_versions=("sign-expression.v1",),
+        capability_ids=("sign.compose",), required_permissions=("camera:session",),
+        fallback_modalities=("conversation",), package_digest="sha256:" + "a" * 64,
+        signer_id="unison-modality-review")
+    manifest = ModalityAdapterManifest(**values, input_supported=True, output_supported=True)
+    assert manifest.modality == "sign"
+    with pytest.raises(ValueError, match="input or output"):
+        ModalityAdapterManifest(**values, input_supported=False, output_supported=False)
