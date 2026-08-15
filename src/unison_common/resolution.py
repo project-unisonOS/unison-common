@@ -104,3 +104,55 @@ class CandidateTransition(ResolutionContract):
     package_digest: str | None = None
     reason: str
     transitioned_at: datetime = Field(default_factory=utc_now)
+
+class ResolutionPilotSignal(ResolutionContract):
+    """Content-free outcome signal for an explicitly opted-in pilot attempt."""
+    schema_version: Literal["resolution-pilot-signal.v1"] = "resolution-pilot-signal.v1"
+    signal_id: str
+    attempt_id: str
+    participant_id: str
+    opted_in: bool
+    usefulness: Literal["useful", "partly-useful", "not-useful"]
+    outcome: Literal["complete", "partial", "blocked", "cancelled"]
+    elapsed_seconds: int = Field(ge=0, le=86400)
+    interaction_turns: int = Field(ge=1, le=1000)
+    clarification_count: int = Field(ge=0, le=100)
+    correction_count: int = Field(ge=0, le=100)
+    generic_refusal: bool = False
+    candidate_suggested: bool = False
+    candidate_relevant: bool | None = None
+    trust_rating: int | None = Field(default=None, ge=1, le=5)
+    privacy_understood: bool | None = None
+    created_at: datetime = Field(default_factory=utc_now)
+
+    @model_validator(mode="after")
+    def require_opt_in_and_consistent_candidate_rating(self) -> "ResolutionPilotSignal":
+        if not self.opted_in:
+            raise ValueError("pilot signals require explicit opt-in")
+        if not self.candidate_suggested and self.candidate_relevant is not None:
+            raise ValueError("candidate relevance requires a candidate suggestion")
+        return self
+
+class ModalityAdapterManifest(ResolutionContract):
+    """Common integration point for independently developed native modalities."""
+    schema_version: Literal["modality-adapter.v1"] = "modality-adapter.v1"
+    adapter_id: str
+    modality: str
+    input_supported: bool
+    output_supported: bool
+    sem_versions: tuple[str, ...]
+    expression_versions: tuple[str, ...]
+    capability_ids: tuple[str, ...]
+    required_permissions: tuple[str, ...] = ()
+    device_classes: tuple[str, ...] = ()
+    fallback_modalities: tuple[str, ...] = ()
+    package_digest: str = Field(pattern=r"^sha256:[a-f0-9]{64}$")
+    signer_id: str
+
+    @model_validator(mode="after")
+    def require_direction_and_contract(self) -> "ModalityAdapterManifest":
+        if not self.input_supported and not self.output_supported:
+            raise ValueError("adapter must provide input or output")
+        if not self.sem_versions or not self.expression_versions:
+            raise ValueError("adapter must declare semantic and expression contracts")
+        return self

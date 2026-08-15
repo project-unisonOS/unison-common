@@ -335,8 +335,10 @@ from .backup import (
 from .resolution import (
     CandidateTransition,
     DeterminizationCandidate,
+    ModalityAdapterManifest,
     ResolutionAttempt,
     ResolutionBudget,
+    ResolutionPilotSignal,
     ResolutionReceipt,
     ResolutionRoute,
 )
@@ -552,8 +554,10 @@ __all__ = [
     "canonical_backup_json",
     "CandidateTransition",
     "DeterminizationCandidate",
+    "ModalityAdapterManifest",
     "ResolutionAttempt",
     "ResolutionBudget",
+    "ResolutionPilotSignal",
     "ResolutionReceipt",
     "ResolutionRoute",
     "ApprovalRecord",

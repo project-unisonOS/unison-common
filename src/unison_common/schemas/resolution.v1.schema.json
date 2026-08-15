@@ -5,7 +5,9 @@
   "oneOf": [
     {"$ref": "#/$defs/ResolutionAttempt"},
     {"$ref": "#/$defs/ResolutionReceipt"},
-    {"$ref": "#/$defs/DeterminizationCandidate"}
+    {"$ref": "#/$defs/DeterminizationCandidate"},
+    {"$ref": "#/$defs/ResolutionPilotSignal"},
+    {"$ref": "#/$defs/ModalityAdapterManifest"}
   ],
   "$defs": {
     "ResolutionAttempt": {
@@ -20,6 +22,14 @@
     "DeterminizationCandidate": {
       "type": "object", "required": ["schema_version", "candidate_id", "scope", "candidate_kind", "structural_fingerprint", "evidence_attempt_ids", "invariant_steps", "parameter_schema", "authority_requirements", "privacy_requirements", "modality_requirements", "failure_modes", "expected_benefit"],
       "properties": {"schema_version": {"const": "determinization-candidate.v1"}, "candidate_id": {"type": "string"}, "scope": {"enum": ["person-local", "household", "contribution"]}, "candidate_kind": {"type": "string"}, "structural_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "evidence_attempt_ids": {"type": "array", "minItems": 1}, "invariant_steps": {"type": "array", "minItems": 1}, "parameter_schema": {"type": "object"}, "authority_requirements": {"type": "array"}, "privacy_requirements": {"type": "array"}, "modality_requirements": {"type": "array"}, "failure_modes": {"type": "array"}, "expected_benefit": {"type": "string"}}
+    },
+    "ResolutionPilotSignal": {
+      "type": "object", "required": ["schema_version", "signal_id", "attempt_id", "participant_id", "opted_in", "usefulness", "outcome", "elapsed_seconds", "interaction_turns", "clarification_count", "correction_count"],
+      "properties": {"schema_version": {"const": "resolution-pilot-signal.v1"}, "signal_id": {"type": "string"}, "attempt_id": {"type": "string"}, "participant_id": {"type": "string"}, "opted_in": {"const": true}, "usefulness": {"enum": ["useful", "partly-useful", "not-useful"]}, "outcome": {"enum": ["complete", "partial", "blocked", "cancelled"]}, "elapsed_seconds": {"type": "integer", "minimum": 0, "maximum": 86400}, "interaction_turns": {"type": "integer", "minimum": 1}, "clarification_count": {"type": "integer", "minimum": 0}, "correction_count": {"type": "integer", "minimum": 0}}
+    },
+    "ModalityAdapterManifest": {
+      "type": "object", "required": ["schema_version", "adapter_id", "modality", "input_supported", "output_supported", "sem_versions", "expression_versions", "capability_ids", "package_digest", "signer_id"],
+      "properties": {"schema_version": {"const": "modality-adapter.v1"}, "adapter_id": {"type": "string"}, "modality": {"type": "string"}, "input_supported": {"type": "boolean"}, "output_supported": {"type": "boolean"}, "sem_versions": {"type": "array", "minItems": 1}, "expression_versions": {"type": "array", "minItems": 1}, "capability_ids": {"type": "array"}, "package_digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}, "signer_id": {"type": "string"}}
     }
   }
 }
