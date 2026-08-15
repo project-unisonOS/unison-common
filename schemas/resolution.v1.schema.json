@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-unisonos.github.io/schemas/resolution.v1.json",
+  "title": "Unison resolution and determinization contracts",
+  "oneOf": [
+    {"$ref": "#/$defs/ResolutionAttempt"},
+    {"$ref": "#/$defs/ResolutionReceipt"},
+    {"$ref": "#/$defs/DeterminizationCandidate"}
+  ],
+  "$defs": {
+    "ResolutionAttempt": {
+      "type": "object",
+      "required": ["schema_version", "attempt_id", "owner_person_id", "assistant_instance_id", "purpose", "risk", "requested_result_class", "authorized_space_ids", "authorized_domain_ids", "budget", "routes", "structural_fingerprint"],
+      "properties": {"schema_version": {"const": "resolution-attempt.v1"}, "attempt_id": {"type": "string"}, "owner_person_id": {"type": "string"}, "assistant_instance_id": {"type": "string"}, "purpose": {"type": "string"}, "risk": {"enum": ["low", "medium", "high", "critical"]}, "requested_result_class": {"type": "string"}, "authorized_space_ids": {"type": "array", "items": {"type": "string"}}, "authorized_domain_ids": {"type": "array", "items": {"type": "string"}}, "budget": {"type": "object"}, "routes": {"type": "array", "minItems": 1}, "structural_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+    },
+    "ResolutionReceipt": {
+      "type": "object", "required": ["schema_version", "receipt_id", "attempt_id", "outcome", "selected_route_ids"],
+      "properties": {"schema_version": {"const": "resolution-receipt.v1"}, "receipt_id": {"type": "string"}, "attempt_id": {"type": "string"}, "outcome": {"enum": ["complete", "partial", "blocked", "cancelled"]}, "selected_route_ids": {"type": "array", "items": {"type": "string"}}}
+    },
+    "DeterminizationCandidate": {
+      "type": "object", "required": ["schema_version", "candidate_id", "scope", "candidate_kind", "structural_fingerprint", "evidence_attempt_ids", "invariant_steps", "parameter_schema", "authority_requirements", "privacy_requirements", "modality_requirements", "failure_modes", "expected_benefit"],
+      "properties": {"schema_version": {"const": "determinization-candidate.v1"}, "candidate_id": {"type": "string"}, "scope": {"enum": ["person-local", "household", "contribution"]}, "candidate_kind": {"type": "string"}, "structural_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "evidence_attempt_ids": {"type": "array", "minItems": 1}, "invariant_steps": {"type": "array", "minItems": 1}, "parameter_schema": {"type": "object"}, "authority_requirements": {"type": "array"}, "privacy_requirements": {"type": "array"}, "modality_requirements": {"type": "array"}, "failure_modes": {"type": "array"}, "expected_benefit": {"type": "string"}}
+    }
+  }
+}
